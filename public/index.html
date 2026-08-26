@@ -420,6 +420,11 @@ tr:hover td{background:#fafbfd;}
   </div>
 
   <div id="grouped-view" style="display:none;">
+    <div class="panel-head" style="border-bottom:none;padding:0 0 12px;">
+      <input type="text" id="g-f-order" placeholder="Search Order ID..." oninput="renderGrouped()" />
+      <input type="text" id="g-f-cust" placeholder="Search Customer..." oninput="renderGrouped()" />
+      <input type="text" id="g-f-inv" placeholder="Search Invoice No..." oninput="renderGrouped()" />
+    </div>
     <div id="grouped-area"><div class="loading"><div class="spinner"></div>Loading...</div></div>
   </div>
 </div>
@@ -987,12 +992,19 @@ function renderPipeline(){
 }
 
 function renderGrouped(){
-  const rows = buildPipelineRows();
+  const fO = (document.getElementById('g-f-order').value||'').trim().toLowerCase();
+  const fC = (document.getElementById('g-f-cust').value||'').trim().toLowerCase();
+  const fI = (document.getElementById('g-f-inv').value||'').trim().toLowerCase();
+  const rows = buildPipelineRows().filter(r =>
+    (!fO || (r.orderId||'').toLowerCase().includes(fO)) &&
+    (!fC || (r.custName||'').toLowerCase().includes(fC)) &&
+    (!fI || (r.invoiceNo||'').toLowerCase().includes(fI))
+  );
   const groups = {};
   rows.forEach(r => { (groups[r.custName||'—'] = groups[r.custName||'—'] || []).push(r); });
 
   const area = document.getElementById('grouped-area');
-  if(!rows.length){ area.innerHTML = '<div class="empty"><div class="empty-icon">&#10003;</div>No orders</div>'; return; }
+  if(!rows.length){ area.innerHTML = '<div class="empty"><div class="empty-icon">&#10003;</div>No orders match</div>'; return; }
 
   const labels = STAGE_LABELS[state.side];
   const stepNames = [...Object.values(labels.fms), ...Object.values(labels.split)];
