@@ -1,0 +1,1184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>O2D Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0f172a; --ink2:#334155; --muted:#64748b; --faint:#94a3b8;
+  --line:#e7ebf2; --line2:#eef1f7; --bg:#f3f5fa; --card:#fff;
+  --blue:#2563eb; --blue-dk:#1d4ed8; --blue-lt:#eef4ff;
+  --grad:linear-gradient(135deg,#2563eb 0%,#4f46e5 100%);
+  --green:#16a34a; --green-lt:#eafbf0; --amber:#d97706; --amber-lt:#fef3e2; --red:#dc2626; --red-lt:#fee2e2;
+  --shadow-sm:0 1px 2px rgba(15,23,42,.05); --shadow-md:0 4px 16px rgba(15,23,42,.06); --shadow-lg:0 20px 50px rgba(15,23,42,.18);
+}
+*{box-sizing:border-box;margin:0;padding:0;font-family:'Inter','Segoe UI',Arial,sans-serif;}
+html,body{overflow-x:hidden;}
+body{background:var(--bg);color:var(--ink);-webkit-font-smoothing:antialiased;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+
+/* ── Landing ── */
+.landing{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:40px;padding:24px;
+  position:relative;overflow:hidden;background:#0b1120;}
+.landing::before,.landing::after{content:'';position:absolute;border-radius:50%;filter:blur(90px);opacity:.55;pointer-events:none;}
+.landing::before{width:560px;height:560px;top:-180px;left:-140px;background:radial-gradient(circle,#4f46e5 0%,rgba(79,70,229,0) 70%);animation:drift1 16s ease-in-out infinite alternate;}
+.landing::after{width:520px;height:520px;bottom:-200px;right:-140px;background:radial-gradient(circle,#0891b2 0%,rgba(8,145,178,0) 70%);animation:drift2 18s ease-in-out infinite alternate;}
+@keyframes drift1{from{transform:translate(0,0);}to{transform:translate(60px,40px);}}
+@keyframes drift2{from{transform:translate(0,0);}to{transform:translate(-50px,-30px);}}
+.landing-eyebrow{position:relative;z-index:1;font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:#818cf8;text-align:center;animation:fadeUp .5s ease both;}
+.landing-title{position:relative;z-index:1;font-size:34px;font-weight:900;color:#fff;text-align:center;letter-spacing:-.6px;animation:fadeUp .5s ease .04s both;margin-top:6px;}
+.landing-sub{position:relative;z-index:1;font-size:14px;color:#94a3b8;text-align:center;margin-top:10px;animation:fadeUp .5s ease .08s both;}
+.landing-cards{position:relative;z-index:1;display:flex;gap:24px;flex-wrap:wrap;justify-content:center;animation:fadeUp .5s ease .14s both;margin-top:8px;}
+.landing-card{width:300px;padding:40px 30px;border-radius:22px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);
+  backdrop-filter:blur(16px);text-align:center;cursor:pointer;transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s,border-color .2s,background .2s;
+  box-shadow:0 8px 30px rgba(0,0,0,.35);position:relative;overflow:hidden;}
+.landing-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,#818cf8,#22d3ee);opacity:0;transition:opacity .2s;}
+.landing-card:hover{border-color:rgba(129,140,248,.5);box-shadow:0 20px 50px rgba(79,70,229,.35);transform:translateY(-6px);background:rgba(255,255,255,.06);}
+.landing-card:hover::before{opacity:1;}
+.landing-card-icon{width:60px;height:60px;margin:0 auto 18px;border-radius:16px;display:flex;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,#4f46e5,#6366f1);box-shadow:0 8px 20px rgba(79,70,229,.4);}
+.landing-card.old .landing-card-icon{background:linear-gradient(135deg,#334155,#475569);box-shadow:0 8px 20px rgba(15,23,42,.4);}
+.landing-card-icon svg{width:28px;height:28px;stroke:#fff;fill:none;stroke-width:1.8;}
+.landing-card-name{font-size:18px;font-weight:800;color:#fff;letter-spacing:-.2px;}
+.landing-card-tag{display:inline-flex;align-items:center;gap:5px;margin-top:12px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;padding:5px 12px;border-radius:20px;background:rgba(129,140,248,.15);color:#a5b4fc;}
+.landing-card.old .landing-card-tag{background:rgba(148,163,184,.12);color:#94a3b8;}
+.landing-card-tag::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;}
+.switch-btn{background:var(--card);border:1px solid var(--line);border-radius:9px;padding:7px 14px;font-size:13px;font-weight:600;color:var(--ink2);cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s;}
+.switch-btn:hover{background:#f8fafc;border-color:#cbd5e1;transform:translateY(-1px);}
+.current-side-badge{font-size:10.5px;font-weight:800;padding:5px 12px;border-radius:20px;background:var(--grad);color:#fff;text-transform:uppercase;letter-spacing:.4px;box-shadow:0 2px 8px rgba(37,99,235,.3);}
+
+/* ── App shell: light sidebar + main (professional style) ── */
+.app-shell{display:flex;align-items:stretch;min-height:100vh;}
+.app-sidebar{width:252px;flex-shrink:0;background:var(--card);color:var(--ink2);display:flex;flex-direction:column;padding:16px 12px;position:sticky;top:0;height:100vh;overflow-y:auto;overflow-x:hidden;z-index:40;transition:width .2s ease;border-right:1px solid var(--line);}
+.app-brand{display:flex;align-items:center;gap:11px;padding:4px 8px 16px;border-bottom:1px solid var(--line2);margin-bottom:10px;}
+.app-brand-logo{width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,#22c55e,#0d9488);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;box-shadow:0 4px 14px rgba(34,197,94,.25);}
+.app-brand-name{font-size:14px;font-weight:800;color:var(--ink);letter-spacing:-.1px;white-space:nowrap;}
+.app-brand-sub{font-size:10.5px;color:var(--green);font-weight:700;margin-top:2px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;}
+.nav-label{font-size:10px;font-weight:800;letter-spacing:.7px;text-transform:uppercase;color:var(--faint);padding:14px 10px 6px;white-space:nowrap;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:9px;font-size:13px;font-weight:600;color:var(--ink2);cursor:pointer;transition:all .15s;margin-bottom:2px;border:1px solid transparent;background:transparent;width:100%;text-align:left;font-family:inherit;}
+.nav-item svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2;flex-shrink:0;stroke-linecap:round;stroke-linejoin:round;}
+.nav-item .nav-text{white-space:nowrap;overflow:hidden;}
+.nav-item:hover{background:#f3f6fb;color:var(--ink);}
+.nav-item.active{background:var(--green-lt);color:#0f7a3d;border-color:#bfe8cf;font-weight:700;}
+.nav-item:disabled{opacity:.5;cursor:not-allowed;}
+.app-sidebar-footer{margin-top:auto;padding-top:12px;border-top:1px solid var(--line2);}
+
+/* ── Sidebar collapse toggle ── */
+.app-sidebar{position:relative;}
+.sidebar-collapse-btn{position:absolute;top:22px;right:-12px;width:24px;height:24px;border-radius:50%;background:var(--card);border:1px solid var(--line);color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:41;transition:all .15s;box-shadow:var(--shadow-sm);}
+.sidebar-collapse-btn:hover{background:#f3f6fb;color:var(--ink);}
+.sidebar-collapse-btn svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s;}
+.app-sidebar.collapsed{width:64px;padding-left:10px;padding-right:10px;}
+.app-sidebar.collapsed .sidebar-collapse-btn svg{transform:rotate(180deg);}
+.app-sidebar.collapsed .app-brand-text,
+.app-sidebar.collapsed .nav-label,
+.app-sidebar.collapsed .nav-text{display:none;}
+.app-sidebar.collapsed .app-brand{justify-content:center;padding-left:0;padding-right:0;}
+.app-sidebar.collapsed .nav-item{justify-content:center;padding:10px;}
+
+/* ── Main / header ── */
+.app-main{flex:1;min-width:0;background:var(--bg);}
+.app-header{max-width:1400px;margin:0 auto;padding:16px 24px 2px;display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:14px;}
+.app-header-date{font-size:10.5px;font-weight:800;letter-spacing:.6px;text-transform:uppercase;color:var(--faint);}
+.app-header-title{font-size:21px;font-weight:900;color:var(--ink);letter-spacing:-.4px;margin-top:3px;}
+.app-header-sub{font-size:13px;color:var(--muted);margin-top:2px;}
+.app-header-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.refresh-btn{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 16px;font-size:13px;font-weight:600;color:var(--ink2);cursor:pointer;display:flex;align-items:center;gap:6px;transition:all .15s;box-shadow:var(--shadow-sm);}
+.refresh-btn:hover{background:#f8fafc;border-color:#cbd5e1;transform:translateY(-1px);}
+.refresh-btn:disabled{opacity:.5;cursor:not-allowed;transform:none;}
+.refresh-btn.primary{background:var(--grad);color:#fff;border-color:transparent;box-shadow:0 2px 10px rgba(37,99,235,.28);}
+.refresh-btn.primary:hover{filter:brightness(1.06);}
+
+.content{max-width:1400px;margin:0 auto;padding:12px 24px 40px;animation:fadeUp .35s ease both;}
+
+/* ── Stat cards (professional KPI-card style) ── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px;}
+.stat-card{background:var(--card);border:1px solid var(--line);border-top:3px solid var(--blue);border-radius:12px;padding:12px 14px 13px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden;transition:transform .15s,box-shadow .15s;}
+.stat-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);}
+.stat-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.stat-icon{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;background:var(--blue-lt);}
+.stat-icon svg{width:13px;height:13px;stroke:var(--blue);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
+.stat-lbl{font-size:10.5px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-top:3px;}
+.stat-val{font-size:24px;font-weight:900;color:var(--ink);letter-spacing:-.4px;line-height:1.1;margin-top:6px;}
+.stat-sub{font-size:11px;color:var(--faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.stat-card.overdue{border-top-color:var(--red);} .stat-card.overdue .stat-val{color:var(--red);} .stat-card.overdue .stat-icon{background:var(--red-lt);} .stat-card.overdue .stat-icon svg{stroke:var(--red);}
+.stat-card.today{border-top-color:var(--amber);} .stat-card.today .stat-val{color:var(--amber);} .stat-card.today .stat-icon{background:var(--amber-lt);} .stat-card.today .stat-icon svg{stroke:var(--amber);}
+.stat-card.done{border-top-color:var(--green);} .stat-card.done .stat-val{color:var(--green);} .stat-card.done .stat-icon{background:var(--green-lt);} .stat-card.done .stat-icon svg{stroke:var(--green);}
+
+/* ── "Needs attention" alert banner ── */
+#attention-banner{display:flex;align-items:flex-start;gap:12px;background:linear-gradient(90deg,#fff7ec,#fef6e0);border:1px solid #fbe3b5;border-radius:12px;padding:12px 16px;margin-bottom:12px;}
+.attn-icon{width:30px;height:30px;border-radius:9px;background:#fde5b0;color:#a1580a;flex-shrink:0;display:flex;align-items:center;justify-content:center;}
+.attn-icon svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;}
+.attn-title{font-size:13px;font-weight:800;color:#8a4a06;}
+.attn-desc{font-size:12px;color:#9a6a2e;margin-top:2px;}
+.attn-desc b{font-weight:800;color:#8a4a06;}
+
+/* ── Dashboard view ── */
+.dash-section{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-md);padding:18px 20px 6px;margin-bottom:16px;}
+.dash-section-title{font-size:15px;font-weight:800;color:var(--ink);}
+.dash-section-sub{font-size:12px;color:var(--faint);margin-top:2px;margin-bottom:14px;}
+.dash-stage-row{display:grid;grid-template-columns:2fr repeat(4,90px);align-items:center;gap:10px;padding:10px 8px;border-radius:10px;cursor:pointer;transition:background .15s;border-bottom:1px solid var(--bg);}
+.dash-stage-row:last-child{border-bottom:none;}
+.dash-stage-row:hover{background:#fafbfd;}
+.dash-stage-row.head{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;color:var(--faint);cursor:default;}
+.dash-stage-row.head:hover{background:transparent;}
+.dash-stage-name{font-size:13px;font-weight:700;color:var(--ink2);}
+.dash-stage-which{font-size:10.5px;color:var(--faint);font-weight:600;margin-left:6px;}
+.dash-num{font-size:14px;font-weight:800;text-align:center;}
+.dash-num.overdue{color:var(--red);}
+.dash-num.done{color:var(--green);}
+.dash-num.pending{color:var(--amber);}
+.status-tag{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+.status-tag::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;}
+.status-tag.done{background:var(--green-lt);color:var(--green);}
+.status-tag.overdue{background:var(--red-lt);color:var(--red);}
+.status-tag.pending{background:var(--blue-lt);color:var(--blue);}
+#d-status-filter button{font-size:12px;padding:6px 12px;}
+
+.layout{display:flex;gap:0;background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden;min-height:480px;box-shadow:var(--shadow-md);}
+.sidebar{width:230px;flex-shrink:0;background:#fafbfd;border-right:1px solid var(--line2);padding:8px 0;}
+.stage-item{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 16px;cursor:pointer;border-left:3px solid transparent;transition:all .15s;}
+.stage-item:hover{background:#eef2fb;}
+.stage-item.active{background:var(--blue-lt);border-left-color:var(--blue);}
+.stage-name{font-size:13px;font-weight:600;color:var(--ink2);line-height:1.3;}
+.stage-item.active .stage-name{color:var(--blue-dk);}
+.stage-count{font-size:11px;font-weight:700;background:#e2e8f0;color:var(--muted);border-radius:20px;padding:2px 9px;flex-shrink:0;}
+.stage-item.active .stage-count{background:var(--blue);color:#fff;}
+.stage-count.has-overdue{background:var(--red-lt);color:var(--red);}
+.stage-item.active .stage-count.has-overdue{background:var(--red);color:#fff;}
+
+.panel{flex:1;min-width:0;display:flex;flex-direction:column;}
+.panel-head{padding:12px 16px;border-bottom:1px solid var(--line2);display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+.panel-head input{flex:1;min-width:140px;padding:8px 12px;border:1px solid #dbe1ea;border-radius:9px;font-size:13px;outline:none;transition:border-color .15s,box-shadow .15s;}
+.panel-head input:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(37,99,235,.12);}
+
+/* ── Step info (What/Who/How/When) ── */
+#step-info{display:flex;gap:0;flex-wrap:wrap;background:var(--blue-lt);border-bottom:1px solid var(--line2);}
+.step-info-item{flex:1;min-width:150px;padding:7px 16px;border-right:1px solid rgba(37,99,235,.12);}
+.step-info-item:last-child{border-right:none;}
+.step-info-lbl{font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--blue);opacity:.75;}
+.step-info-val{font-size:12.5px;font-weight:600;color:var(--blue-dk);margin-top:2px;line-height:1.4;word-break:break-word;}
+.step-info-val a{color:var(--blue-dk);text-decoration:underline;font-weight:700;}
+.step-info-val a:hover{color:var(--blue);}
+.timeline-info-btn{background:none;border:none;cursor:pointer;color:var(--faint);font-size:13px;padding:0 2px;flex-shrink:0;line-height:1;}
+.timeline-info-btn:hover{color:var(--blue);}
+.timeline-detail{display:none;flex-basis:100%;background:var(--blue-lt);border-radius:8px;padding:8px 12px;margin:2px 0 4px 34px;font-size:11.5px;color:var(--blue-dk);line-height:1.6;}
+.timeline-detail.open{display:block;}
+.timeline-detail a{color:var(--blue-dk);text-decoration:underline;font-weight:700;}
+.timeline-detail b{font-weight:800;}
+
+.table-wrap{overflow:auto;max-height:calc(100vh - 300px);}
+table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;}
+th{background:#fafbfd;padding:9px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--faint);text-transform:uppercase;letter-spacing:.4px;border-bottom:1px solid var(--line2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative;}
+td{padding:9px 14px;border-bottom:1px solid var(--bg);vertical-align:middle;color:var(--ink2);}
+.cell-trunc{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* ── Excel-style draggable column resize ── */
+.col-resizer{position:absolute;top:0;right:0;width:10px;height:100%;cursor:col-resize;z-index:5;touch-action:none;}
+.col-resizer::after{content:'';position:absolute;top:3px;bottom:3px;right:3px;width:2px;border-radius:2px;background:#d5dbe6;transition:background .15s,width .1s;}
+.col-resizer:hover::after,.col-resizer.resizing::after{background:var(--blue);width:3px;}
+body.col-resizing,body.col-resizing *{cursor:col-resize !important;user-select:none !important;}
+tr.overdue td{background:#fffafa;}
+tr:hover td{background:#fafbfd;}
+.id-cell{font-weight:700;color:var(--blue);}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;}
+.badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor;}
+.badge-overdue{background:var(--red-lt);color:var(--red);}
+.badge-pending{background:var(--blue-lt);color:var(--blue);}
+.delay-txt{color:var(--red);font-size:11px;font-weight:700;display:block;margin-top:2px;}
+
+.done-btn{background:var(--green);color:#fff;border:none;border-radius:8px;padding:7px 15px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s;box-shadow:0 1px 3px rgba(22,163,74,.25);}
+.done-btn:hover{background:#15803d;transform:translateY(-1px);box-shadow:0 3px 10px rgba(22,163,74,.35);}
+.done-btn:disabled{background:#a7c9b3;cursor:not-allowed;transform:none;box-shadow:none;}
+.done-txt{color:var(--green);font-weight:700;font-size:12px;}
+
+.empty{text-align:center;padding:70px 20px;color:var(--faint);}
+.empty-icon{font-size:44px;margin-bottom:10px;}
+.loading{text-align:center;padding:70px 20px;color:var(--faint);}
+.spinner{width:32px;height:32px;border:3px solid #e2e8f0;border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+#modal{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(2px);align-items:center;justify-content:center;z-index:200;}
+#modal.open{display:flex;}
+.modal-box{background:var(--card);border-radius:16px;padding:26px;width:320px;box-shadow:var(--shadow-lg);animation:fadeUp .2s ease both;}
+.modal-title{font-size:16px;font-weight:800;margin-bottom:4px;}
+.modal-sub{font-size:12px;color:var(--faint);margin-bottom:16px;}
+.modal-box input{width:100%;padding:10px 12px;border:1px solid #dbe1ea;border-radius:9px;font-size:14px;outline:none;margin-bottom:10px;}
+.modal-box input:focus{border-color:var(--blue);}
+.modal-confirm{width:100%;padding:10px;background:var(--grad);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;}
+.modal-confirm:hover{filter:brightness(1.06);}
+.modal-doer-btn{width:100%;padding:11px;margin-bottom:8px;border:1.5px solid var(--line);border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;background:#f8fafc;color:var(--ink);transition:all .15s;}
+.modal-doer-btn:hover{border-color:var(--blue);background:var(--blue-lt);color:var(--blue);transform:translateY(-1px);}
+.modal-cancel{width:100%;padding:9px;margin-top:6px;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:var(--faint);}
+.modal-cancel:hover{color:var(--ink2);}
+
+.progress-track{flex:1;height:7px;border-radius:4px;background:#f1f5f9;overflow:hidden;}
+.progress-fill{height:100%;background:linear-gradient(90deg,#16a34a,#22c55e);border-radius:4px;transition:width .3s;}
+.pipeline-row{cursor:pointer;}
+.pipeline-row:hover td{background:#fafbfd;}
+.step-dot{width:19px;height:19px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:10px;transition:transform .15s;}
+.pipeline-row:hover .step-dot{transform:scale(1.12);}
+.step-dot.done{background:var(--green);color:#fff;}
+.step-dot.current{background:var(--amber);color:#fff;}
+.step-dot.pending{background:#eef1f7;}
+.timeline-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 0;border-bottom:1px solid var(--bg);}
+.timeline-done-btn{padding:5px 12px;font-size:11px;flex-shrink:0;}
+.timeline-row:last-child{border-bottom:none;}
+.timeline-icon{width:25px;height:25px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;font-weight:700;}
+.timeline-icon.done{background:var(--green-lt);color:var(--green);}
+.timeline-icon.current{background:var(--amber-lt);color:var(--amber);}
+.timeline-icon.pending{background:#f1f5f9;color:#cbd5e1;}
+.timeline-name{font-size:13px;font-weight:600;flex:1;}
+.timeline-name.pending{color:var(--faint);}
+.timeline-meta{font-size:11px;color:var(--faint);text-align:right;white-space:nowrap;}
+.timeline-dates{font-size:10.5px;color:var(--faint);margin:-4px 0 8px 34px;}
+.timeline-dates b{font-weight:700;color:var(--muted);}
+.timeline-dates.overdue{color:var(--red);}
+.timeline-dates.overdue b{color:var(--red);}
+#detail-modal{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(2px);align-items:center;justify-content:center;z-index:200;}
+#detail-modal.open{display:flex;}
+.detail-box{background:var(--card);border-radius:16px;padding:24px;width:420px;max-width:92vw;max-height:85vh;overflow:auto;box-shadow:var(--shadow-lg);animation:fadeUp .2s ease both;}
+.detail-close{float:right;background:none;border:none;font-size:18px;color:var(--faint);cursor:pointer;}
+.detail-id{font-size:12px;font-weight:700;color:var(--blue);}
+.detail-cust{font-size:16px;font-weight:800;margin-top:2px;}
+.detail-inv{font-size:12px;color:var(--muted);margin-top:2px;}
+.detail-sub{font-size:11px;color:var(--faint);text-transform:uppercase;letter-spacing:.4px;margin:14px 0 4px;border-top:1px solid var(--line2);padding-top:12px;}
+.group-card{border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px;box-shadow:var(--shadow-sm);transition:box-shadow .15s;}
+.group-card:hover{box-shadow:var(--shadow-md);}
+.group-head{padding:13px 16px;background:var(--green-lt);display:flex;align-items:center;justify-content:space-between;}
+.group-head.has-overdue{background:#fef2f2;}
+.group-name{font-weight:700;font-size:14px;}
+.group-meta{font-size:12px;color:var(--muted);margin-top:2px;}
+
+#toasts{position:fixed;bottom:20px;right:20px;z-index:300;display:flex;flex-direction:column;gap:8px;}
+.toast{background:var(--ink);color:#fff;padding:11px 16px;border-radius:10px;font-size:13px;font-weight:500;opacity:0;transform:translateY(10px);transition:all .3s;max-width:320px;box-shadow:0 10px 24px rgba(0,0,0,.2);}
+.toast.show{opacity:1;transform:translateY(0);}
+.toast.ok{background:var(--green);}
+.toast.err{background:var(--red);}
+
+@media(max-width:800px){
+  .stats{grid-template-columns:1fr 1fr;}
+  .layout{flex-direction:column;}
+  .sidebar{width:100%;display:flex;overflow-x:auto;padding:6px;}
+  .stage-item{flex-shrink:0;border-left:none;border-bottom:3px solid transparent;}
+  .stage-item.active{border-left:none;border-bottom-color:var(--blue);}
+  .app-shell{flex-direction:column;}
+  .app-sidebar{width:100% !important;height:auto;position:static;flex-direction:row;flex-wrap:wrap;align-items:center;padding:12px;}
+  .app-brand{border-bottom:none;margin-bottom:0;padding:4px 8px;border-right:1px solid var(--line2);}
+  .app-brand-text,.nav-text{display:block !important;}
+  .sidebar-collapse-btn{display:none;}
+  .nav-label{display:none;}
+  #view-toggle,.app-sidebar-footer{display:flex;gap:4px;margin-top:0;padding-top:0;border-top:none;}
+  .nav-item{margin-bottom:0;white-space:nowrap;}
+  #refresh-btn,#sync-btn{white-space:nowrap;}
+}
+</style>
+</head>
+<body>
+
+<div class="landing" id="landing">
+  <div>
+    <div class="landing-eyebrow">Order &middot; to &middot; Delivery</div>
+    <div class="landing-title">Choose a system to open</div>
+    <div class="landing-sub">Pick which tracker you want to work in</div>
+  </div>
+  <div class="landing-cards" id="landing-cards">
+    <div class="landing-card new" data-side="new">
+      <div class="landing-card-icon"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg></div>
+      <div class="landing-card-name">CRM FMS</div>
+    </div>
+    <div class="landing-card old" data-side="old">
+      <div class="landing-card-icon"><svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7l1.5-3h15L21 7"/><path d="M3 7h18v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/><path d="M9 12h6"/></svg></div>
+      <div class="landing-card-name">New Order To Delivery FMS</div>
+    </div>
+  </div>
+</div>
+
+<div id="dashboard" style="display:none;">
+<div class="app-shell">
+
+<aside class="app-sidebar" id="app-sidebar">
+  <button class="sidebar-collapse-btn" id="sidebar-collapse-btn" onclick="toggleSidebar()" title="Collapse sidebar">
+    <svg viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></svg>
+  </button>
+  <div class="app-brand">
+    <div class="app-brand-logo">&#128230;</div>
+    <div class="app-brand-text">
+      <div class="app-brand-name">O2D Tracker</div>
+      <div class="app-brand-sub" id="sidebar-side-name">CRM FMS</div>
+    </div>
+  </div>
+
+  <div class="nav-label">View</div>
+  <div id="view-toggle">
+    <button class="nav-item active" data-view="dashboard" title="Dashboard">
+      <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/></svg><span class="nav-text">Dashboard</span></button>
+    <button class="nav-item" data-view="stage" title="By Stage">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="7" height="16" rx="1.5"/><rect x="14" y="4" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="6" rx="1.5"/></svg><span class="nav-text">By Stage</span></button>
+    <button class="nav-item" data-view="pipeline" title="Pipeline">
+      <svg viewBox="0 0 24 24"><path d="M4 12h16M14 6l6 6-6 6"/></svg><span class="nav-text">Pipeline</span></button>
+    <button class="nav-item" data-view="grouped" title="Grouped">
+      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="4" rx="1"/><rect x="3" y="10" width="18" height="4" rx="1"/><rect x="3" y="16" width="18" height="4" rx="1"/></svg><span class="nav-text">Grouped</span></button>
+  </div>
+
+  <div class="nav-label">Data</div>
+  <button class="nav-item" id="sync-btn" onclick="syncNow()" title="Sync Now">
+    <svg viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/></svg><span class="nav-text">Sync Now</span></button>
+  <button class="nav-item" id="refresh-btn" onclick="loadOrders()" title="Refresh">
+    <svg viewBox="0 0 24 24"><path d="M4 4v5h5M20 20v-5h-5M4 9a8 8 0 0 1 14.5-4.5M20 15a8 8 0 0 1-14.5 4.5"/></svg><span class="nav-text">Refresh</span></button>
+
+  <div class="app-sidebar-footer">
+    <button class="nav-item" onclick="showLanding()" title="Switch System">
+      <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg><span class="nav-text">Switch System</span></button>
+  </div>
+</aside>
+
+<main class="app-main">
+<div class="app-header">
+  <div>
+    <div class="app-header-date" id="header-date"></div>
+    <div class="app-header-title" id="header-sub">CRM FMS</div>
+  </div>
+</div>
+
+<div class="content">
+  <div class="stats">
+    <div class="stat-card">
+      <div class="stat-card-top"><div class="stat-lbl">Total</div>
+        <div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h10"/></svg></div></div>
+      <div class="stat-val" id="s-total">0</div>
+      <div class="stat-sub">Orders + invoice steps tracked</div></div>
+    <div class="stat-card overdue">
+      <div class="stat-card-top"><div class="stat-lbl">Overdue</div>
+        <div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.29 3.86l-8.18 14.18A1 1 0 0 0 3 19.5h18a1 1 0 0 0 .89-1.46L13.71 3.86a1 1 0 0 0-1.72 0z"/></svg></div></div>
+      <div class="stat-val" id="s-overdue">0</div>
+      <div class="stat-sub">Steps past their planned date</div></div>
+    <div class="stat-card today">
+      <div class="stat-card-top"><div class="stat-lbl">Due Today</div>
+        <div class="stat-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div></div>
+      <div class="stat-val" id="s-today">0</div>
+      <div class="stat-sub">Steps planned for today</div></div>
+    <div class="stat-card done">
+      <div class="stat-card-top"><div class="stat-lbl">Done Today</div>
+        <div class="stat-icon"><svg viewBox="0 0 24 24"><path d="M20 6L9 17l-5-5"/></svg></div></div>
+      <div class="stat-val" id="s-done">0</div>
+      <div class="stat-sub">Steps completed today</div></div>
+  </div>
+
+  <div id="attention-banner" style="display:none;"></div>
+
+  <div id="dashboard-view">
+    <div class="dash-section">
+      <div class="dash-section-title">Stage summary</div>
+      <div class="dash-section-sub">How many orders/invoices are at each step &mdash; click a row to open it in By Stage.</div>
+      <div id="dash-stage-summary"><div class="loading"><div class="spinner"></div>Loading...</div></div>
+    </div>
+    <div class="dash-section">
+      <div class="dash-section-title">All orders</div>
+      <div class="dash-section-sub">Every order, with its current step and status.</div>
+      <div class="panel-head" style="padding:0 0 12px;border-bottom:none;">
+        <input type="text" id="d-f-order" placeholder="Search Order ID..." oninput="renderDashboard()" />
+        <input type="text" id="d-f-cust" placeholder="Search Customer..." oninput="renderDashboard()" />
+        <div class="toggle" id="d-status-filter">
+          <button data-status="all" class="active">All</button>
+          <button data-status="done">Done</button>
+          <button data-status="overdue">Overdue</button>
+          <button data-status="pending">Pending</button>
+        </div>
+      </div>
+      <div id="dash-all-orders"><div class="loading"><div class="spinner"></div>Loading...</div></div>
+    </div>
+  </div>
+
+  <div class="layout" id="stage-view" style="display:none;">
+    <div class="sidebar" id="sidebar"></div>
+    <div class="panel">
+      <div class="panel-head">
+        <input type="text" id="f-order" placeholder="Search Order ID..." oninput="renderTable()" />
+        <input type="text" id="f-cust" placeholder="Search Customer..." oninput="renderTable()" />
+      </div>
+      <div id="step-info"></div>
+      <div class="table-wrap" id="table-area">
+        <div class="loading"><div class="spinner"></div>Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="layout" id="pipeline-view" style="display:none;flex-direction:column;">
+    <div class="panel-head">
+      <input type="text" id="p-f-order" placeholder="Search Order ID..." oninput="renderPipeline()" />
+      <input type="text" id="p-f-cust" placeholder="Search Customer..." oninput="renderPipeline()" />
+      <input type="text" id="p-f-inv" placeholder="Search Invoice No..." oninput="renderPipeline()" />
+    </div>
+    <div class="table-wrap" id="pipeline-area">
+      <div class="loading"><div class="spinner"></div>Loading...</div>
+    </div>
+  </div>
+
+  <div id="grouped-view" style="display:none;">
+    <div id="grouped-area"><div class="loading"><div class="spinner"></div>Loading...</div></div>
+  </div>
+</div>
+</main>
+
+</div><!-- /.app-shell -->
+</div><!-- /#dashboard -->
+
+<div id="toasts"></div>
+
+<div id="detail-modal">
+  <div class="detail-box">
+    <button class="detail-close" onclick="closeDetailModal()" aria-label="Close">&times;</button>
+    <div class="detail-id" id="detail-id"></div>
+    <div class="detail-cust" id="detail-cust"></div>
+    <div class="detail-inv" id="detail-inv"></div>
+    <div class="detail-sub">Step timeline</div>
+    <div id="detail-timeline"></div>
+  </div>
+</div>
+
+<div id="modal">
+  <div class="modal-box">
+    <div class="modal-title">Who completed this?</div>
+    <div class="modal-sub" id="modal-sub">Order</div>
+    <div id="modal-doer-list"></div>
+    <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+  </div>
+</div>
+
+<script>
+// ── Stage labels (human-readable names, matching what's confirmed in the sheets) ──
+const STAGE_LABELS = {
+  new: {
+    fms:   { confirmOrder:'Confirm Order', coordinateDelivery:'Coordinate Delivery' },
+    split: { dispatchIntimation:'Dispatch Intimation', confirmDelivery:'Confirm Product Delivery & Receipt of Delivery Docs',
+             paymentFollowUp1:'Next Follow up Date For Payment', partFullPayment:'Part / Full Payment Recd', paymentComplete:'Payment Complete' },
+  },
+  old: {
+    fms:   { acknowledgement:'Acknowledgement of Order', stockChecking:'Stock Checking', updateOrderStatus:'Update Order Status' },
+    split: { dispatchIntimation:'Dispatch Intimation', lrDetails:'LR Details' },
+  },
+};
+
+// state.activeStage is a composite id "which:key" (e.g. "fms:confirmOrder") so FMS
+// and Split_FMS stages can live in one merged sidebar without key collisions.
+// fmsMeta/splitMeta hold {stageKey: {what,who,how,when}} from the sheet's rows 2-5.
+let state = { side:'new', viewMode:'dashboard', fmsOrders:[], splitOrders:[], fmsMeta:{}, splitMeta:{}, activeStage:null };
+
+// Turns any http(s) URL inside plain text into a clickable link, keeping the
+// rest as plain (escaped) text — handles "Label : https://..." cells from the sheet.
+// Short, readable label for a link instead of the raw (often very long) URL —
+// guesses a friendly name from the domain/path so it stays one short line.
+function linkLabel(url){
+  if(/docs\.google\.com\/spreadsheets/.test(url)) return '&#128203; Open Sheet';
+  if(/docs\.google\.com\/document/.test(url))     return '&#128196; Open Doc';
+  if(/forms\.gle|docs\.google\.com\/forms/.test(url)) return '&#128221; Open Form';
+  if(/script\.google\.com/.test(url))             return '&#9881;&#65039; Open Form';
+  return '&#128279; Open Link';
+}
+function linkify(text){
+  if(!text) return '';
+  const escaped = esc(text);
+  return escaped.replace(/(https?:\/\/[^\s]+)/g, url =>
+    `<a href="${url}" target="_blank" rel="noopener">${linkLabel(url)}</a>`);
+}
+function metaFor(which, key){
+  const src = which === 'fms' ? state.fmsMeta : state.splitMeta;
+  return (src && src[key]) || { what:'', who:'', how:'', when:'' };
+}
+
+const SIDE_NAMES = { new:'CRM FMS', old:'New Order To Delivery FMS' };
+
+document.querySelectorAll('.landing-card').forEach(card => card.onclick = () => {
+  state.side = card.dataset.side;
+  state.activeStage = null; // reset — old/new have different stages
+  document.getElementById('sidebar-side-name').textContent = SIDE_NAMES[state.side];
+  document.getElementById('header-sub').textContent = SIDE_NAMES[state.side];
+  showDashboard();
+  loadOrders();
+});
+
+function showDashboard(){
+  document.getElementById('landing').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  const d = new Date();
+  document.getElementById('header-date').textContent =
+    d.toLocaleDateString('en-GB', { weekday:'long', day:'2-digit', month:'long', year:'numeric' }).toUpperCase();
+}
+function showLanding(){
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('landing').style.display = 'flex';
+}
+
+// Sidebar collapse/expand — remembers the choice across reloads.
+function toggleSidebar(){
+  const sb = document.getElementById('app-sidebar');
+  const collapsed = sb.classList.toggle('collapsed');
+  localStorage.setItem('o2d-sidebar-collapsed', collapsed ? '1' : '0');
+  document.getElementById('sidebar-collapse-btn').title = collapsed ? 'Expand sidebar' : 'Collapse sidebar';
+}
+if(localStorage.getItem('o2d-sidebar-collapsed') === '1'){
+  document.getElementById('app-sidebar').classList.add('collapsed');
+}
+
+document.querySelectorAll('#view-toggle button').forEach(b => b.onclick = () => switchView(b.dataset.view));
+
+function switchView(view){
+  document.querySelectorAll('#view-toggle button').forEach(x=>x.classList.toggle('active', x.dataset.view===view));
+  state.viewMode = view;
+  document.getElementById('dashboard-view').style.display = view==='dashboard' ? 'block': 'none';
+  document.getElementById('stage-view').style.display     = view==='stage'     ? 'flex' : 'none';
+  document.getElementById('pipeline-view').style.display  = view==='pipeline'  ? 'flex' : 'none';
+  document.getElementById('grouped-view').style.display   = view==='grouped'   ? 'block': 'none';
+  if(view==='dashboard') renderDashboard();
+  if(view==='pipeline') renderPipeline();
+  if(view==='grouped') renderGrouped();
+}
+
+document.querySelectorAll('#d-status-filter button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('#d-status-filter button').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  renderDashboard();
+});
+
+// Merges an order's 2 FMS-level steps with its matching Split_FMS invoice's 5 steps
+// into one combined 7-step (or 2-step, if not dispatched yet) journey.
+// which=stage-label-source ('fms'|'old' — same STAGE_LABELS keying as the sidebar).
+function buildCombinedStages(fmsOrder, splitOrder){
+  const labels = STAGE_LABELS[state.side];
+  const out = Object.entries(labels.fms).map(([key,name]) => {
+    const s = fmsOrder.stages.find(x=>x.key===key) || {};
+    return { name, which:'fms', key, planned:s.planned||'', actual:s.actual||'', doer:s.doer||'', completed:!!s.completed, meta:metaFor('fms',key), existsInSheet:true };
+  });
+  // Split (invoice-level) steps are always listed, even before the order has
+  // been dispatched — they just show as "not yet reached" placeholders until
+  // Dispatch_Ledger sync creates the Split_FMS row (existsInSheet:false until
+  // then, which also hides the Mark Done button — nothing to write to yet).
+  Object.entries(labels.split).forEach(([key,name]) => {
+    const s = splitOrder ? (splitOrder.stages.find(x=>x.key===key) || {}) : {};
+    out.push({ name, which:'split', key, planned:s.planned||'', actual:s.actual||'', doer:s.doer||'', completed:!!s.completed, meta:metaFor('split',key), existsInSheet:!!splitOrder });
+  });
+  return out;
+}
+
+function datasetFor(which){ return which === 'fms' ? state.fmsOrders : state.splitOrders; }
+
+// Triggers a fresh pull from CS Orders/Dispatch_Ledger into all 4 sheets, then reloads the table.
+// Buttons keep their icon <svg> — only the .nav-text span's label changes,
+// so setting a "Syncing..." state never wipes out the icon.
+function setNavBtnText(btn, text){ const t = btn.querySelector('.nav-text'); if(t) t.textContent = text; }
+
+async function syncNow(){
+  const btn = document.getElementById('sync-btn');
+  btn.disabled = true; setNavBtnText(btn, 'Syncing...');
+  toast('Syncing from CS Orders / Dispatch_Ledger...', 'ok');
+  try{
+    const res = await fetch('/api/sync-now', { method:'POST' });
+    const data = await res.json();
+    if(data.success){
+      const r = data.results;
+      toast(`Synced — added ${r.newFMS.added+r.oldFMS.added} orders, ${r.newSplit.added+r.oldSplit.added} dispatches`, 'ok');
+      loadOrders();
+    } else {
+      toast('Sync failed: '+(data.error||'unknown error'), 'err');
+    }
+  }catch(e){ toast('Sync failed: '+e.message, 'err'); }
+  btn.disabled = false; setNavBtnText(btn, 'Sync Now');
+}
+
+async function loadOrders(){
+  const btn = document.getElementById('refresh-btn');
+  btn.disabled = true; setNavBtnText(btn, 'Loading...');
+  document.getElementById('table-area').innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
+  try{
+    const [fmsRes, splitRes] = await Promise.all([
+      fetch(`/api/orders?side=${state.side}&which=fms`).then(r=>r.json()),
+      fetch(`/api/orders?side=${state.side}&which=split`).then(r=>r.json()),
+    ]);
+    state.fmsOrders = fmsRes.success ? (fmsRes.orders||[]) : [];
+    state.splitOrders = splitRes.success ? (splitRes.orders||[]) : [];
+    state.fmsMeta = fmsRes.success ? (fmsRes.meta||{}) : {};
+    state.splitMeta = splitRes.success ? (splitRes.meta||{}) : {};
+    if(!fmsRes.success) toast('FMS load failed: '+(fmsRes.error||'unknown error'), 'err');
+    if(!splitRes.success) toast('Split FMS load failed: '+(splitRes.error||'unknown error'), 'err');
+  }catch(e){ toast('Load failed: '+e.message, 'err'); state.fmsOrders = []; state.splitOrders = []; }
+  btn.disabled = false; setNavBtnText(btn, 'Refresh');
+
+  // Combined stage list: FMS stages first, then Split FMS stages, all in one sidebar
+  const stageList = [];
+  Object.entries(STAGE_LABELS[state.side].fms).forEach(([key,name]) => stageList.push({which:'fms', key, name}));
+  Object.entries(STAGE_LABELS[state.side].split).forEach(([key,name]) => stageList.push({which:'split', key, name}));
+  state.stageList = stageList;
+
+  const ids = stageList.map(s => s.which+':'+s.key);
+  if(!state.activeStage || !ids.includes(state.activeStage)) state.activeStage = ids[0];
+
+  buildSidebar();
+  updateStats();
+  renderTable();
+  renderStepInfo();
+  if(state.viewMode==='dashboard') renderDashboard();
+  if(state.viewMode==='pipeline') renderPipeline();
+  if(state.viewMode==='grouped') renderGrouped();
+}
+
+// Shows What / Who / How / When for the currently selected stage, right above
+// its table — links inside the sheet text (e.g. "How: Check IMS Sheet : https://...")
+// are rendered clickable via linkify().
+function renderStepInfo(){
+  const el = document.getElementById('step-info');
+  if(!state.activeStage){ el.innerHTML = ''; return; }
+  const { which, key } = activeStageInfo();
+  const m = metaFor(which, key);
+  if(!m.who && !m.how){ el.innerHTML = ''; return; }
+  // "What" is skipped here — the sidebar's stage name already shows it, so
+  // repeating it in this bar would just be a duplicate of the same text.
+  const rows = [
+    ['Who', m.who], ['How', m.how], ['When', m.when],
+  ].filter(([,v]) => v);
+  el.innerHTML = rows.map(([lbl,val]) =>
+    `<div class="step-info-item"><div class="step-info-lbl">${esc(lbl)}</div><div class="step-info-val">${linkify(val)}</div></div>`
+  ).join('');
+}
+
+function buildSidebar(){
+  const now = new Date();
+  const sb = document.getElementById('sidebar');
+  sb.innerHTML = '';
+  state.stageList.forEach(({which, key, name}) => {
+    const id = which+':'+key;
+    let count = 0, hasOverdue = false;
+    datasetFor(which).forEach(o => {
+      const s = o.stages.find(x => x.key === key);
+      // Only count rows that actually have a Planned date yet — a blank Planned
+      // means the previous stage isn't done, so this step isn't truly "pending" yet.
+      if(s && !s.completed && s.planned){
+        count++;
+        const pd = parseDate(s.planned);
+        if(pd && pd < now) hasOverdue = true;
+      }
+    });
+    const div = document.createElement('div');
+    div.className = 'stage-item' + (id === state.activeStage ? ' active' : '');
+    div.onclick = () => { state.activeStage = id; buildSidebar(); renderTable(); renderStepInfo(); };
+    div.innerHTML = `<span class="stage-name">${esc(name)}</span><span class="stage-count${hasOverdue?' has-overdue':''}">${count}</span>`;
+    sb.appendChild(div);
+  });
+}
+
+function updateStats(){
+  const now = new Date();
+  const todayStart = new Date(now); todayStart.setHours(0,0,0,0);
+  const todayEnd = new Date(now); todayEnd.setHours(23,59,59,999);
+  let overdue=0, dueToday=0, doneToday=0;
+  const allTasks = state.fmsOrders.length + state.splitOrders.length; // total = orders + invoices combined
+  [...state.fmsOrders, ...state.splitOrders].forEach(o => o.stages.forEach(s => {
+    if(s.completed){ const a = parseDate(s.actual); if(a && a>=todayStart && a<=todayEnd) doneToday++; return; }
+    const pd = parseDate(s.planned);
+    if(!pd) return;
+    if(pd < now) overdue++; else if(pd >= todayStart && pd <= todayEnd) dueToday++;
+  }));
+  document.getElementById('s-total').textContent = allTasks;
+  document.getElementById('s-overdue').textContent = overdue;
+  document.getElementById('s-today').textContent = dueToday;
+  document.getElementById('s-done').textContent = doneToday;
+  renderAttentionBanner(overdue, dueToday);
+}
+
+// Smart "needs attention" summary — only shows up when there's actually
+// something urgent, so it doesn't clutter the page on a clean day.
+function renderAttentionBanner(overdue, dueToday){
+  const el = document.getElementById('attention-banner');
+  if(!overdue && !dueToday){ el.style.display = 'none'; return; }
+  const parts = [];
+  if(overdue) parts.push(`<b>${overdue} overdue</b>`);
+  if(dueToday) parts.push(`<b>${dueToday} due today</b>`);
+  el.innerHTML = `<div class="attn-icon"><svg viewBox="0 0 24 24"><path d="M12 9v4m0 4h.01M10.29 3.86l-8.18 14.18A1 1 0 0 0 3 19.5h18a1 1 0 0 0 .89-1.46L13.71 3.86a1 1 0 0 0-1.72 0z"/></svg></div>`+
+    `<div><div class="attn-title">Needs attention now</div>`+
+    `<div class="attn-desc">${parts.join(' &middot; ')} &mdash; pick a stage on the left and clear them below.</div></div>`;
+  el.style.display = 'flex';
+}
+
+function activeStageInfo(){
+  const [which, key] = state.activeStage.split(':');
+  const entry = state.stageList.find(s => s.which===which && s.key===key);
+  return { which, key, name: entry ? entry.name : key };
+}
+
+function renderTable(){
+  const now = new Date();
+  const { which, key } = activeStageInfo();
+  const fO = (document.getElementById('f-order').value||'').trim().toLowerCase();
+  const fC = (document.getElementById('f-cust').value||'').trim().toLowerCase();
+  const rows = datasetFor(which).filter(o => {
+    const s = o.stages.find(x => x.key === key);
+    // Same rule as the sidebar count: only show rows that actually have a Planned
+    // date — blank Planned means the previous stage isn't done yet.
+    if(!s || s.completed || !s.planned) return false;
+    if(fO && !(o.orderId||'').toLowerCase().includes(fO)) return false;
+    if(fC && !(o.custName||'').toLowerCase().includes(fC)) return false;
+    return true;
+  }).sort((a, b) => {
+    // Soonest/most-overdue Planned date first — no Planned date at all sorts last.
+    const sa = a.stages.find(x => x.key === key), sb = b.stages.find(x => x.key === key);
+    const pa = parseDate(sa.planned), pb = parseDate(sb.planned);
+    if(!pa && !pb) return 0;
+    if(!pa) return 1;
+    if(!pb) return -1;
+    return pa - pb;
+  });
+
+  const area = document.getElementById('table-area');
+  if(!rows.length){
+    area.innerHTML = '<div class="empty"><div class="empty-icon">✓</div>All clear — no pending items in this step</div>';
+    return;
+  }
+
+  const showInvoice = which === 'split';
+  // Fixed column widths (as %) so Customer/Planned don't balloon with empty
+  // space — table-layout:fixed makes these authoritative regardless of content.
+  const colWidths = showInvoice
+    ? [4, 14, 13, 22, 18, 10, 19]   // #, Order ID, Invoice No, Customer, Planned, Delay, Action
+    : [4, 17, 29, 20, 12, 18];      // #, Order ID, Customer, Planned, Delay, Action
+  const headers = ['#', 'Order ID'].concat(showInvoice ? ['Invoice No'] : []).concat(['Customer', 'Planned', 'Delay', 'Action']);
+  let html = '<table><colgroup>' + colWidths.map(w => `<col style="width:${w}%">`).join('') + '</colgroup>' +
+    '<thead><tr>' + headers.map((h, i) => `<th>${h}<div class="col-resizer" data-col="${i}"></div></th>`).join('') + '</tr></thead><tbody>';
+
+  rows.forEach((o, i) => {
+    const s = o.stages.find(x => x.key === key);
+    const pd = parseDate(s.planned);
+    const isOverdue = pd && pd < now;
+    const badge = isOverdue ? '<span class="badge badge-overdue">Overdue</span>' : '<span class="badge badge-pending">Pending</span>';
+    const delayTxt = isOverdue && pd ? `<span class="delay-txt">${overdueStr(pd)}</span>` : '';
+    html += `<tr${isOverdue?' class="overdue"':''}>` +
+      `<td style="color:#cbd5e1;">${i+1}</td>` +
+      `<td class="id-cell cell-trunc" title="${esc(o.orderId)}">${esc(o.orderId)}</td>` +
+      (showInvoice ? `<td class="cell-trunc" title="${esc(o.invoiceNo||'')}">${esc(o.invoiceNo||'—')}</td>` : '') +
+      `<td class="cell-trunc" title="${esc(o.custName)}">${esc(o.custName)}</td>` +
+      `<td>${badge}<br>${fmtDate(s.planned)}${delayTxt}</td>` +
+      `<td>${isOverdue?overdueStr(pd):'—'}</td>` +
+      `<td>${doneBtn(o, s)}</td>` +
+      `</tr>`;
+  });
+  html += '</tbody></table>';
+  area.innerHTML = html;
+  initColumnResize(area.querySelector('table'));
+}
+
+// ── Excel-style draggable column resize ── drag a header's right edge to make
+// that column bigger/smaller — the table's total width follows (and the wrapper
+// scrolls horizontally if it no longer fits), same feel as resizing in Excel.
+function initColumnResize(table){
+  if(!table) return;
+  const cols = table.querySelectorAll('colgroup col');
+  if(!cols.length) return;
+  // IMPORTANT: widths are NOT measured/locked here at render time — this can
+  // run while the table is hidden behind another view (e.g. a background
+  // Refresh while you're looking at Pipeline/Grouped), where every th reads
+  // as 0px and would permanently freeze every column at 0 — exactly the
+  // squashed/overlapping layout bug this replaced. Colgroup stays in its
+  // normal %, responsive width:100% form until a resize is actually started;
+  // by definition that can only happen while the table is visible on screen,
+  // so the widths measured then are always real.
+  table.querySelectorAll('.col-resizer').forEach(handle => {
+    handle.addEventListener('mousedown', e => {
+      e.preventDefault();
+      const i = +handle.dataset.col;
+      const col = cols[i];
+      if(!col) return;
+
+      // Snapshot every column's CURRENT (guaranteed-visible) width as px now,
+      // once, right as dragging begins.
+      const ths = table.querySelectorAll('th');
+      let total = 0;
+      ths.forEach((th, j) => {
+        const w = Math.round(th.getBoundingClientRect().width);
+        if(cols[j]) cols[j].style.width = w + 'px';
+        total += w;
+      });
+      table.style.width = total + 'px';
+
+      const startX = e.clientX;
+      const startWidth = parseFloat(col.style.width);
+      handle.classList.add('resizing');
+      document.body.classList.add('col-resizing');
+
+      function onMove(ev){
+        const next = Math.max(50, startWidth + (ev.clientX - startX)); // 50px min so a column can't vanish
+        col.style.width = next + 'px';
+        let sum = 0; cols.forEach(c => sum += parseFloat(c.style.width) || 0);
+        table.style.width = sum + 'px';
+      }
+      function onUp(){
+        handle.classList.remove('resizing');
+        document.body.classList.remove('col-resizing');
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+      }
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+  });
+}
+
+// Builds one row per order+invoice journey: FMS order joined with its matching
+// Split_FMS invoice(s) (or none, if not dispatched yet — 2-step journey then).
+function buildPipelineRows(){
+  const bySplitOrderId = {};
+  state.splitOrders.forEach(s => { (bySplitOrderId[s.orderId] = bySplitOrderId[s.orderId] || []).push(s); });
+  const rows = [];
+  state.fmsOrders.forEach(fo => {
+    const matches = bySplitOrderId[fo.orderId];
+    if(matches && matches.length){
+      matches.forEach(so => rows.push({
+        orderId: fo.orderId, custName: fo.custName, invoiceNo: so.invoiceNo,
+        stages: buildCombinedStages(fo, so),
+      }));
+    } else {
+      rows.push({ orderId: fo.orderId, custName: fo.custName, invoiceNo: '', stages: buildCombinedStages(fo, null) });
+    }
+  });
+  return rows;
+}
+
+function stepStatusOf(stages){
+  const now = new Date();
+  // Only a step that actually has a sheet row can be "current" — later steps
+  // without one yet (e.g. Split_FMS steps before dispatch) stay pending.
+  let currentIdx = stages.findIndex(s => !s.completed && s.existsInSheet !== false);
+  if(currentIdx === -1){
+    const doneCount = stages.filter(s => s.completed).length;
+    if(doneCount === stages.length) return { currentName:'All done', pct:100, doneCount, total:stages.length, overdue:false };
+    // Every reachable step is done — the rest are waiting on dispatch/etc.
+    return { currentName:'Awaiting Dispatch', pct:Math.round(doneCount/stages.length*100), doneCount, total:stages.length, overdue:false };
+  }
+  const pd = parseDate(stages[currentIdx].planned);
+  return { currentName: stages[currentIdx].name, pct: Math.round(currentIdx/stages.length*100),
+    doneCount: currentIdx, total: stages.length, overdue: !!(pd && pd < now) };
+}
+
+// ================================================================
+// DASHBOARD — bird's-eye view: per-stage Total/Done/Overdue/Pending counts,
+// plus a full all-orders list (every order, any status, not just pending
+// ones) with a Done/Overdue/Pending tag and a status filter.
+// ================================================================
+function renderDashboard(){
+  renderDashStageSummary();
+  renderDashAllOrders();
+}
+
+function renderDashStageSummary(){
+  const now = new Date();
+  const el = document.getElementById('dash-stage-summary');
+  if(!state.stageList || !state.stageList.length){ el.innerHTML = ''; return; }
+  let html = `<div class="dash-stage-row head"><div>Stage</div><div class="dash-num">Total</div>`+
+    `<div class="dash-num">Done</div><div class="dash-num">Overdue</div><div class="dash-num">Pending</div></div>`;
+  state.stageList.forEach(({which, key, name}) => {
+    const ds = datasetFor(which);
+    let done=0, overdue=0, pending=0;
+    ds.forEach(o => {
+      const s = o.stages.find(x => x.key === key);
+      if(!s || s.completed){ if(s && s.completed) done++; return; }
+      if(!s.planned) return; // previous stage isn't done yet — not reached, not counted
+      const pd = parseDate(s.planned);
+      if(pd && pd < now) overdue++; else pending++;
+    });
+    html += `<div class="dash-stage-row" onclick="jumpToStage('${which}','${key}')">`+
+      `<div class="dash-stage-name">${esc(name)}<span class="dash-stage-which">${which==='fms'?'Order':'Invoice'}</span></div>`+
+      `<div class="dash-num">${ds.length}</div>`+
+      `<div class="dash-num done">${done}</div>`+
+      `<div class="dash-num overdue">${overdue}</div>`+
+      `<div class="dash-num pending">${pending}</div>`+
+      `</div>`;
+  });
+  el.innerHTML = html;
+}
+
+// Jumps from a stage-summary row straight into By Stage, already filtered
+// to that exact stage.
+function jumpToStage(which, key){
+  state.activeStage = which+':'+key;
+  switchView('stage');
+  buildSidebar();
+  renderTable();
+  renderStepInfo();
+}
+
+function renderDashAllOrders(){
+  const fO = (document.getElementById('d-f-order').value||'').trim().toLowerCase();
+  const fC = (document.getElementById('d-f-cust').value||'').trim().toLowerCase();
+  const statusFilter = document.querySelector('#d-status-filter button.active').dataset.status;
+  let rows = buildPipelineRows().filter(r =>
+    (!fO || (r.orderId||'').toLowerCase().includes(fO)) &&
+    (!fC || (r.custName||'').toLowerCase().includes(fC))
+  );
+  rows.forEach(r => { r._status = stepStatusOf(r.stages); });
+  rows = rows.filter(r => {
+    const allDone = r._status.doneCount === r._status.total;
+    r._statusTag = allDone ? 'done' : (r._status.overdue ? 'overdue' : 'pending');
+    return statusFilter === 'all' || statusFilter === r._statusTag;
+  });
+  rows.sort((a,b) => (b._status.overdue - a._status.overdue) || (a._status.pct - b._status.pct));
+
+  const area = document.getElementById('dash-all-orders');
+  if(!rows.length){ area.innerHTML = '<div class="empty"><div class="empty-icon">&#10003;</div>No orders match</div>'; return; }
+
+  const dHeaders = ['Order ID','Customer','Invoice','Current step','Status','Progress'];
+  const dColWidths = [14,22,14,20,12,18];
+  let html = '<div class="table-wrap"><table><colgroup>' + dColWidths.map(w=>`<col style="width:${w}%">`).join('') + '</colgroup>'+
+    '<thead><tr>' + dHeaders.map((h,i)=>`<th>${h}<div class="col-resizer" data-col="${i}"></div></th>`).join('') + '</tr></thead><tbody>';
+  rows.forEach(r => {
+    const st = r._status;
+    const tagLabel = r._statusTag === 'done' ? 'Done' : (r._statusTag === 'overdue' ? 'Overdue' : 'Pending');
+    html += `<tr class="pipeline-row" onclick="openDetailModal('${r.orderId.replace(/'/g,"\\'")}','${(r.invoiceNo||'').replace(/'/g,"\\'")}')">`+
+      `<td class="id-cell cell-trunc" title="${esc(r.orderId)}">${esc(r.orderId)}</td>`+
+      `<td class="cell-trunc" title="${esc(r.custName)}">${esc(r.custName)}</td>`+
+      `<td class="cell-trunc" title="${esc(r.invoiceNo||'')}">${esc(r.invoiceNo||'—')}</td>`+
+      `<td>${esc(st.currentName)}</td>`+
+      `<td><span class="status-tag ${r._statusTag}">${tagLabel}</span></td>`+
+      `<td><div style="display:flex;align-items:center;gap:8px;">`+
+        `<div class="progress-track"><div class="progress-fill" style="width:${st.pct}%;"></div></div>`+
+        `<span style="font-size:11px;color:#94a3b8;min-width:32px;">${st.doneCount}/${st.total}</span>`+
+      `</div></td></tr>`;
+  });
+  html += '</tbody></table></div>';
+  area.innerHTML = html;
+  initColumnResize(area.querySelector('table'));
+}
+
+function renderPipeline(){
+  const fO = (document.getElementById('p-f-order').value||'').trim().toLowerCase();
+  const fC = (document.getElementById('p-f-cust').value||'').trim().toLowerCase();
+  const fI = (document.getElementById('p-f-inv').value||'').trim().toLowerCase();
+  let rows = buildPipelineRows().filter(r =>
+    (!fO || (r.orderId||'').toLowerCase().includes(fO)) &&
+    (!fC || (r.custName||'').toLowerCase().includes(fC)) &&
+    (!fI || (r.invoiceNo||'').toLowerCase().includes(fI))
+  );
+  rows.forEach(r => r._status = stepStatusOf(r.stages));
+  rows.sort((a,b) => (b._status.overdue - a._status.overdue) || (a._status.pct - b._status.pct));
+
+  const area = document.getElementById('pipeline-area');
+  if(!rows.length){ area.innerHTML = '<div class="empty"><div class="empty-icon">&#10003;</div>No orders match</div>'; return; }
+
+  const pHeaders = ['Order ID', 'Customer', 'Invoice', 'Current step', 'Progress'];
+  const pColWidths = [16, 26, 16, 26, 16];
+  let html = '<table><colgroup>' + pColWidths.map(w => `<col style="width:${w}%">`).join('') + '</colgroup>' +
+    '<thead><tr>' + pHeaders.map((h,i) => `<th>${h}<div class="col-resizer" data-col="${i}"></div></th>`).join('') + '</tr></thead><tbody>';
+  rows.forEach(r => {
+    const st = r._status;
+    html += `<tr class="pipeline-row" onclick="openDetailModal('${r.orderId.replace(/'/g,"\\'")}','${(r.invoiceNo||'').replace(/'/g,"\\'")}')">`+
+      `<td class="id-cell cell-trunc" title="${esc(r.orderId)}">${esc(r.orderId)}</td>`+
+      `<td class="cell-trunc" title="${esc(r.custName)}">${esc(r.custName)}</td>`+
+      `<td class="cell-trunc" title="${esc(r.invoiceNo||'')}">${esc(r.invoiceNo||'—')}</td>`+
+      `<td>${esc(st.currentName)}${st.overdue?' <span class="badge badge-overdue" style="margin-left:6px;">Overdue</span>':''}</td>`+
+      `<td><div style="display:flex;align-items:center;gap:8px;">`+
+        `<div class="progress-track"><div class="progress-fill" style="width:${st.pct}%;"></div></div>`+
+        `<span style="font-size:11px;color:#94a3b8;min-width:32px;">${st.doneCount}/${st.total}</span>`+
+      `</div></td></tr>`;
+  });
+  html += '</tbody></table>';
+  area.innerHTML = html;
+  initColumnResize(area.querySelector('table'));
+}
+
+function renderGrouped(){
+  const rows = buildPipelineRows();
+  const groups = {};
+  rows.forEach(r => { (groups[r.custName||'—'] = groups[r.custName||'—'] || []).push(r); });
+
+  const area = document.getElementById('grouped-area');
+  if(!rows.length){ area.innerHTML = '<div class="empty"><div class="empty-icon">&#10003;</div>No orders</div>'; return; }
+
+  const labels = STAGE_LABELS[state.side];
+  const stepNames = [...Object.values(labels.fms), ...Object.values(labels.split)];
+  const now = new Date();
+
+  let html = '';
+  Object.entries(groups).forEach(([cust, orders]) => {
+    let doneTotal=0, stepTotal=0, hasOverdue=false;
+    orders.forEach(o => { const st = stepStatusOf(o.stages); doneTotal+=st.doneCount; stepTotal+=st.total; if(st.overdue) hasOverdue=true; });
+    const pct = stepTotal ? Math.round(doneTotal/stepTotal*100) : 0;
+
+    html += `<div class="group-card"><div class="group-head${hasOverdue?' has-overdue':''}">`+
+      `<div><div class="group-name">${esc(cust)}</div>`+
+      `<div class="group-meta">${orders.length} order${orders.length!==1?'s':''} &middot; ${pct}% complete &middot; ${doneTotal}/${stepTotal} steps</div></div>`+
+      `<span style="font-size:12px;font-weight:600;color:${hasOverdue?'#dc2626':'#16a34a'};">${hasOverdue?'overdue':'on track'}</span>`+
+      `</div><div style="overflow-x:auto;"><table style="min-width:600px;"><thead><tr><th>Order</th>`+
+      stepNames.map(n=>`<th style="text-align:center;">${esc(n)}</th>`).join('')+
+      `</tr></thead><tbody>`;
+    orders.forEach(o => {
+      html += `<tr class="pipeline-row" onclick="openDetailModal('${o.orderId.replace(/'/g,"\\'")}','${(o.invoiceNo||'').replace(/'/g,"\\'")}')"><td class="id-cell">${esc(o.orderId)}</td>`;
+      o.stages.forEach((s,i) => {
+        const st = s.completed ? 'done' : (i===o.stages.findIndex(x=>!x.completed) ? 'current' : 'pending');
+        const icon = st==='done' ? '&#10003;' : (st==='current' ? '&#9203;' : '');
+        html += `<td><div class="step-dot ${st}">${icon}</div></td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table></div></div>';
+  });
+  area.innerHTML = html;
+}
+
+function openDetailModal(orderId, invoiceNo){
+  const rows = buildPipelineRows();
+  const row = rows.find(r => r.orderId===orderId && (invoiceNo ? r.invoiceNo===invoiceNo : true)) || rows.find(r => r.orderId===orderId);
+  if(!row) return;
+  document.getElementById('detail-id').textContent = row.orderId;
+  document.getElementById('detail-cust').textContent = row.custName;
+  document.getElementById('detail-inv').textContent = row.invoiceNo ? 'Invoice '+row.invoiceNo : 'Not yet dispatched';
+  const now = new Date();
+  // Only a step with an actual sheet row can be "current" — steps still
+  // waiting on dispatch (no Split_FMS row yet) stay shown as pending, further
+  // down in the SAME list, instead of being left out of the timeline entirely.
+  const currentIdx = row.stages.findIndex(s=>!s.completed && s.existsInSheet !== false);
+  // "Awaiting dispatch" only makes sense on the ONE step directly blocked by
+  // it — the first stage without a sheet row. Everything further down is just
+  // an ordinary future step, so it stays plain "not yet" like before.
+  const firstMissingIdx = row.stages.findIndex(s => s.existsInSheet === false);
+  document.getElementById('detail-timeline').innerHTML = row.stages.map((s,i) => {
+    const isCurrent = i===currentIdx;
+    const cls = s.completed ? 'done' : (isCurrent ? 'current' : 'pending');
+    const icon = cls==='done' ? '&#10003;' : (cls==='current' ? '&#9203;' : (i+1));
+    const metaTxt = s.completed ? esc(s.doer||'—')
+      : (isCurrent ? 'in progress' : (i===firstMissingIdx ? 'awaiting dispatch' : 'not yet'));
+    // Planned/Actual dates go on their own full-width line UNDER the row
+    // (not squeezed into timeline-meta) so the Mark Done button never wraps.
+    let datesLine = '';
+    if(s.completed){
+      const pd = parseDate(s.planned), ad = parseDate(s.actual);
+      const late = pd && ad && ad > pd;
+      datesLine = `<div class="timeline-dates${late?' overdue':''}">`+
+        (s.planned ? `<b>Planned</b> ${fmtDate(s.planned)} &rarr; ` : '') +
+        `<b>Actual</b> ${fmtDate(s.actual)}</div>`;
+    } else if(s.planned){
+      const pd = parseDate(s.planned);
+      const overdue = pd && pd < now;
+      datesLine = `<div class="timeline-dates${overdue?' overdue':''}"><b>Planned</b> ${fmtDate(s.planned)}</div>`;
+    }
+    const m = s.meta || {};
+    // "What" skipped — the timeline-name line right above already shows the step name.
+    const hasInfo = m.who || m.how;
+    const infoBtn = hasInfo ? `<button class="timeline-info-btn" onclick="toggleTimelineDetail(this)" title="Who / How">&#9432;</button>` : '';
+    const detailHtml = hasInfo ? `<div class="timeline-detail">` +
+      (m.who  ? `<div><b>Who:</b> ${linkify(m.who)}</div>` : '') +
+      (m.how  ? `<div><b>How:</b> ${linkify(m.how)}</div>` : '') +
+      `</div>` : '';
+    // Only the current (in-progress) step gets a Mark Done button — earlier
+    // steps are already done, later ones aren't reachable yet (same order
+    // the By Stage table enforces via the Planned-date rule).
+    const safeOrder = row.orderId.replace(/'/g,"\\'");
+    const safeInv = (row.invoiceNo||'').replace(/'/g,"\\'");
+    const markDoneBtn = isCurrent && s.which
+      ? `<button class="done-btn timeline-done-btn" onclick="openModalFromTimeline('${safeOrder}','${safeInv}','${s.which}','${s.key}')">Mark Done</button>`
+      : '';
+    return `<div class="timeline-row"><div class="timeline-icon ${cls}">${icon}</div>`+
+      `<div class="timeline-name ${cls==='pending'?'pending':''}">${esc(s.name)}</div>`+
+      `<div class="timeline-meta">${metaTxt}</div>${infoBtn}${markDoneBtn}</div>${datesLine}${detailHtml}`;
+  }).join('');
+  document.getElementById('detail-modal').classList.add('open');
+}
+function closeDetailModal(){ document.getElementById('detail-modal').classList.remove('open'); }
+
+// Mark Done from inside the step-timeline modal — closes this modal first so
+// the doer-select modal (#modal) isn't stacked underneath a second dark overlay.
+function openModalFromTimeline(orderId, invoiceNo, which, key){
+  closeDetailModal();
+  openModal(orderId, invoiceNo, which, key);
+}
+
+// The ⓘ button's timeline-detail box is its own row's NEXT sibling (rendered
+// right after the .timeline-row div it belongs to), so walk up to the row first.
+function toggleTimelineDetail(btn){
+  const row = btn.closest('.timeline-row');
+  const detail = row && row.nextElementSibling;
+  if(detail && detail.classList.contains('timeline-detail')) detail.classList.toggle('open');
+}
+
+function doneBtn(o, s){
+  const safeOrder = o.orderId.replace(/'/g,"\\'");
+  const safeInv = (o.invoiceNo||'').replace(/'/g,"\\'");
+  const { which, key } = activeStageInfo();
+  return `<button class="done-btn" onclick="openModal('${safeOrder}','${safeInv}','${which}','${key}')">Mark Done</button>`;
+}
+
+const DOER_NAMES = ['Manasi', 'Sayli', 'Sushil', 'Neha'];
+
+// which/key are explicit here (not read from state.activeStage) so this same
+// modal works both from the By Stage table AND from the Pipeline/Grouped
+// step-timeline modal, where there's no single "active stage" selected.
+let _modalOrder = null, _modalInvoice = null, _modalWhich = null, _modalKey = null;
+function openModal(orderId, invoiceNo, which, key){
+  _modalOrder = orderId; _modalInvoice = invoiceNo;
+  _modalWhich = which; _modalKey = key;
+  document.getElementById('modal-sub').textContent = orderId + (invoiceNo ? ' / '+invoiceNo : '');
+  document.getElementById('modal-doer-list').innerHTML = DOER_NAMES.map(name =>
+    `<button class="modal-doer-btn" onclick="confirmDone('${name}')">${esc(name)}</button>`
+  ).join('');
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal(){ document.getElementById('modal').classList.remove('open'); }
+
+async function confirmDone(doer){
+  closeModal();
+  toast('Saving...', 'ok');
+  try{
+    const which = _modalWhich, key = _modalKey;
+    const res = await fetch('/api/complete-stage', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        side: state.side, which, stageKey: key,
+        orderId: _modalOrder, invoiceNo: _modalInvoice || undefined,
+        actualTime: new Date().toISOString(), doer,
+      }),
+    });
+    const data = await res.json();
+    if(data.success){
+      toast('Done!' + (data.cross && data.cross.synced ? ' (synced to other side too)' : ''), 'ok');
+      loadOrders();
+    } else {
+      toast('Error: '+(data.error||'failed'), 'err');
+    }
+  }catch(e){ toast('Failed: '+e.message, 'err'); }
+}
+
+// ── Helpers ──
+function parseDate(s){
+  if(!s) return null;
+  const m = String(s).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})\s*(\d{1,2})?:?(\d{2})?/);
+  if(m) return new Date(+m[3], +m[2]-1, +m[1], +(m[4]||0), +(m[5]||0));
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+function fmtDate(s){
+  const d = parseDate(s);
+  if(!d) return '—';
+  const p2 = n => String(n).padStart(2,'0');
+  return `${p2(d.getDate())}/${p2(d.getMonth()+1)} ${p2(d.getHours())}:${p2(d.getMinutes())}`;
+}
+function overdueStr(pd){
+  const ms = new Date() - pd;
+  if(ms <= 0) return '';
+  const h = Math.floor(ms/3600000), m = Math.floor((ms%3600000)/60000);
+  return h>=24 ? `${Math.floor(h/24)}d ${h%24}h` : `${h}h ${m}m`;
+}
+function esc(s){ return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function toast(msg, type){
+  const el = document.createElement('div');
+  el.className = 'toast ' + (type||'');
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(()=>el.classList.add('show'), 10);
+  setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=>el.remove(), 300); }, 3000);
+}
+
+// No auto-load on page open anymore — waits for a landing-card click to pick
+// a system first (state.side), then loadOrders() runs from that click handler.
+</script>
+</body>
+</html>
