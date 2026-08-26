@@ -82,11 +82,15 @@ const OLD_FMS_STAGES = {
   stockChecking:     { plan:17, actual:18, status:19, delay:20, doer:21 },          // O2D2 (old-only)
   updateOrderStatus: { plan:22, actual:23, status:24, delay:25, doer:26 },          // O2D3
 };
-// OLD Split_FMS (only the 2 cross-synced steps modeled here — GRN/POD, Feedback,
-// Payment Follow Ups 1-3 exist in the sheet but are intentionally old-only, unmapped)
+// OLD Split_FMS — dispatchIntimation/lrDetails are cross-synced with the new
+// side (see CROSS_SYNC below); grnPod/sendFeedbackForm are old-only (trackable
+// here, just never mirrored to the new system). Payment Follow Up 1-3 are
+// deliberately excluded per instruction — not wanted in either system.
 const OLD_SPLIT_STAGES = {
   dispatchIntimation: { plan:16, actual:17, status:18, delay:19, doer:20 }, // O2D6
   lrDetails:          { plan:21, actual:22, status:23, delay:24, doer:25 }, // O2D7
+  grnPod:             { plan:26, actual:27, status:28, delay:29, doer:30 }, // O2D8 (old-only)
+  sendFeedbackForm:   { plan:31, actual:32, status:33, delay:34, doer:35 }, // O2D9 (old-only)
 };
 
 // ── Cross-sync map: new step key -> old step key + match granularity ────────
