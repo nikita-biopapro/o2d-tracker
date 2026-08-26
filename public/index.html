@@ -402,6 +402,7 @@ tr:hover td{background:#fafbfd;}
       <div class="panel-head">
         <input type="text" id="f-order" placeholder="Search Order ID..." oninput="renderTable()" />
         <input type="text" id="f-cust" placeholder="Search Customer..." oninput="renderTable()" />
+        <input type="text" id="f-inv" placeholder="Search Invoice No..." oninput="renderTable()" />
       </div>
       <div id="step-info"></div>
       <div class="table-wrap" id="table-area">
@@ -721,6 +722,7 @@ function renderTable(){
   const { which, key } = activeStageInfo();
   const fO = (document.getElementById('f-order').value||'').trim().toLowerCase();
   const fC = (document.getElementById('f-cust').value||'').trim().toLowerCase();
+  const fI = (document.getElementById('f-inv').value||'').trim().toLowerCase();
   const rows = datasetFor(which).filter(o => {
     const s = o.stages.find(x => x.key === key);
     // Same rule as the sidebar count: only show rows that actually have a Planned
@@ -728,6 +730,7 @@ function renderTable(){
     if(!s || s.completed || !s.planned) return false;
     if(fO && !(o.orderId||'').toLowerCase().includes(fO)) return false;
     if(fC && !(o.custName||'').toLowerCase().includes(fC)) return false;
+    if(fI && !(o.invoiceNo||'').toLowerCase().includes(fI)) return false;
     return true;
   }).sort((a, b) => {
     // Soonest/most-overdue Planned date first — no Planned date at all sorts last.
