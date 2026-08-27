@@ -1185,6 +1185,13 @@ const STATUS_PROMPT_CONFIG = {
     { label:'Done — LR Shared', value:'Done', cls:'yes' },
     { label:'Received — LR Received', value:'Received', cls:'no' },
   ]},
+  // Same prompt as lrDetails — this is its cross-sync partner on the new side,
+  // so completing it here (instead of via LR Details on old side) needs the
+  // same status question, or the Status column would be left blank.
+  confirmDelivery: { title:'LR Details', sub:'What is the LR status?', options:[
+    { label:'Done — LR Shared', value:'Done', cls:'yes' },
+    { label:'Received — LR Received', value:'Received', cls:'no' },
+  ]},
 };
 
 // which/key are explicit here (not read from state.activeStage) so this same
