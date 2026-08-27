@@ -603,9 +603,12 @@ async function loadOrders(){
   btn.disabled = true; setNavBtnText(btn, 'Loading...');
   document.getElementById('table-area').innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
   try{
+    // fresh=1 — Refresh (and every loadOrders() call) always bypasses the
+    // server's 5-min cache, so manual sheet edits show up immediately instead
+    // of waiting up to 5 minutes for the cache to expire on its own.
     const [fmsRes, splitRes] = await Promise.all([
-      fetch(`/api/orders?side=${state.side}&which=fms`).then(r=>r.json()),
-      fetch(`/api/orders?side=${state.side}&which=split`).then(r=>r.json()),
+      fetch(`/api/orders?side=${state.side}&which=fms&fresh=1`).then(r=>r.json()),
+      fetch(`/api/orders?side=${state.side}&which=split&fresh=1`).then(r=>r.json()),
     ]);
     state.fmsOrders = fmsRes.success ? (fmsRes.orders||[]) : [];
     state.splitOrders = splitRes.success ? (splitRes.orders||[]) : [];

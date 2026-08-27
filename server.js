@@ -116,10 +116,10 @@ async function getSheets() {
 const _cache = {};
 const CACHE_TTL = 5 * 60 * 1000;
 
-async function readSheet(sheets, spreadsheetId, range) {
+async function readSheet(sheets, spreadsheetId, range, bypassCache) {
   const key = `${spreadsheetId}::${range}`;
   const now = Date.now();
-  if (_cache[key] && now - _cache[key].ts < CACHE_TTL) return _cache[key].data;
+  if (!bypassCache && _cache[key] && now - _cache[key].ts < CACHE_TTL) return _cache[key].data;
   try {
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId, range,
@@ -479,9 +479,13 @@ app.get('/api/orders', async (req, res) => {
   try {
     const side = req.query.side === 'old' ? 'old' : 'new';
     const which = req.query.which === 'split' ? 'split' : 'fms';
+    // "Refresh" in the UI sends fresh=1 to force past the 5-min cache — so
+    // manual edits made directly in the sheet (not via Mark Done) show up
+    // immediately instead of waiting up to 5 minutes.
+    const fresh = req.query.fresh === '1';
     const sheets = await getSheets();
     const info = sheetInfo(which, side);
-    const rows = await readSheet(sheets, info.id, `${info.tab}!A${DATA_START_ROW}:${colLetter(50)}`);
+    const rows = await readSheet(sheets, info.id, `${info.tab}!A${DATA_START_ROW}:${colLetter(50)}`, fresh);
     const meta = await getStageMeta(sheets, info.id, info.tab, info.stages);
 
     const orders = rows
