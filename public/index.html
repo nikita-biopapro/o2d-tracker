@@ -217,6 +217,14 @@ tr:hover td{background:#fafbfd;}
 .modal-cancel{width:100%;padding:9px;margin-top:6px;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;background:transparent;color:var(--faint);}
 .modal-cancel:hover{color:var(--ink2);}
 
+#status-modal{display:none;position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(2px);align-items:center;justify-content:center;z-index:210;}
+#status-modal.open{display:flex;}
+.modal-status-btn{width:100%;padding:12px;margin-bottom:8px;border:1.5px solid transparent;border-radius:10px;font-size:14px;font-weight:700;cursor:pointer;transition:all .15s;}
+.modal-status-btn.yes{background:var(--green-lt);color:var(--green);}
+.modal-status-btn.yes:hover{background:var(--green);color:#fff;transform:translateY(-1px);}
+.modal-status-btn.no{background:var(--red-lt);color:var(--red);}
+.modal-status-btn.no:hover{background:var(--red);color:#fff;transform:translateY(-1px);}
+
 .progress-track{flex:1;height:7px;border-radius:4px;background:#f1f5f9;overflow:hidden;}
 .progress-fill{height:100%;background:linear-gradient(90deg,#16a34a,#22c55e);border-radius:4px;transition:width .3s;}
 .pipeline-row{cursor:pointer;}
@@ -455,6 +463,16 @@ tr:hover td{background:#fafbfd;}
     <div class="modal-sub" id="modal-sub">Order</div>
     <div id="modal-doer-list"></div>
     <button class="modal-cancel" onclick="closeModal()">Cancel</button>
+  </div>
+</div>
+
+<div id="status-modal">
+  <div class="modal-box">
+    <div class="modal-title">Customer Update</div>
+    <div class="modal-sub">Did customer confirm?</div>
+    <button class="modal-status-btn yes" onclick="chooseStatus('Yes')">Yes &mdash; Customer Confirmed</button>
+    <button class="modal-status-btn no" onclick="chooseStatus('No')">No &mdash; No Response</button>
+    <button class="modal-cancel" onclick="closeStatusModal()">Cancel</button>
   </div>
 </div>
 
@@ -1144,14 +1162,34 @@ function doneBtn(o, s){
 
 const DOER_NAMES = ['Manasi', 'Sayli', 'Sushil', 'Neha'];
 
+// These 2 stages ask "Did customer confirm?" before the doer list — same
+// Yes/No customer-update check the old CRM had for this exact step (they're
+// cross-synced partners: Coordinate Delivery on new side, Update Order
+// Status on old side).
+const STATUS_PROMPT_STAGES = { coordinateDelivery: true, updateOrderStatus: true };
+
 // which/key are explicit here (not read from state.activeStage) so this same
 // modal works both from the By Stage table AND from the Pipeline/Grouped
 // step-timeline modal, where there's no single "active stage" selected.
-let _modalOrder = null, _modalInvoice = null, _modalWhich = null, _modalKey = null;
+let _modalOrder = null, _modalInvoice = null, _modalWhich = null, _modalKey = null, _modalStatus = null;
 function openModal(orderId, invoiceNo, which, key){
   _modalOrder = orderId; _modalInvoice = invoiceNo;
-  _modalWhich = which; _modalKey = key;
-  document.getElementById('modal-sub').textContent = orderId + (invoiceNo ? ' / '+invoiceNo : '');
+  _modalWhich = which; _modalKey = key; _modalStatus = null;
+  if(STATUS_PROMPT_STAGES[key]){
+    document.getElementById('status-modal').classList.add('open');
+  } else {
+    openDoerModal();
+  }
+}
+function chooseStatus(status){
+  _modalStatus = status;
+  closeStatusModal();
+  openDoerModal();
+}
+function closeStatusModal(){ document.getElementById('status-modal').classList.remove('open'); }
+
+function openDoerModal(){
+  document.getElementById('modal-sub').textContent = _modalOrder + (_modalInvoice ? ' / '+_modalInvoice : '');
   document.getElementById('modal-doer-list').innerHTML = DOER_NAMES.map(name =>
     `<button class="modal-doer-btn" onclick="confirmDone('${name}')">${esc(name)}</button>`
   ).join('');
@@ -1169,7 +1207,7 @@ async function confirmDone(doer){
       body: JSON.stringify({
         side: state.side, which, stageKey: key,
         orderId: _modalOrder, invoiceNo: _modalInvoice || undefined,
-        actualTime: new Date().toISOString(), doer,
+        actualTime: new Date().toISOString(), doer, status: _modalStatus || undefined,
       }),
     });
     const data = await res.json();
