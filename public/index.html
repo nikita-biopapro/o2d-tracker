@@ -224,6 +224,8 @@ tr:hover td{background:#fafbfd;}
 .modal-status-btn.yes:hover{background:var(--green);color:#fff;transform:translateY(-1px);}
 .modal-status-btn.no{background:var(--red-lt);color:var(--red);}
 .modal-status-btn.no:hover{background:var(--red);color:#fff;transform:translateY(-1px);}
+.modal-status-btn.partial{background:var(--amber-lt);color:var(--amber);}
+.modal-status-btn.partial:hover{background:var(--amber);color:#fff;transform:translateY(-1px);}
 
 .progress-track{flex:1;height:7px;border-radius:4px;background:#f1f5f9;overflow:hidden;}
 .progress-fill{height:100%;background:linear-gradient(90deg,#16a34a,#22c55e);border-radius:4px;transition:width .3s;}
@@ -468,10 +470,9 @@ tr:hover td{background:#fafbfd;}
 
 <div id="status-modal">
   <div class="modal-box">
-    <div class="modal-title">Customer Update</div>
-    <div class="modal-sub">Did customer confirm?</div>
-    <button class="modal-status-btn yes" onclick="chooseStatus('Yes')">Yes &mdash; Customer Confirmed</button>
-    <button class="modal-status-btn no" onclick="chooseStatus('No')">No &mdash; No Response</button>
+    <div class="modal-title" id="status-modal-title">Customer Update</div>
+    <div class="modal-sub" id="status-modal-sub">Did customer confirm?</div>
+    <div id="status-modal-options"></div>
     <button class="modal-cancel" onclick="closeStatusModal()">Cancel</button>
   </div>
 </div>
@@ -1162,11 +1163,25 @@ function doneBtn(o, s){
 
 const DOER_NAMES = ['Manasi', 'Sayli', 'Sushil', 'Neha'];
 
-// These 2 stages ask "Did customer confirm?" before the doer list — same
-// Yes/No customer-update check the old CRM had for this exact step (they're
-// cross-synced partners: Coordinate Delivery on new side, Update Order
-// Status on old side).
-const STATUS_PROMPT_STAGES = { coordinateDelivery: true, updateOrderStatus: true };
+// Stages that ask a status question before the doer list — each with its own
+// title/question/options. Coordinate Delivery & Update Order Status are
+// cross-synced partners (same Yes/No customer-confirm check the old CRM had);
+// Stock Checking is old-only, with a 3-way Yes/No/Partial stock-availability check.
+const STATUS_PROMPT_CONFIG = {
+  coordinateDelivery: { title:'Customer Update', sub:'Did customer confirm?', options:[
+    { label:'Yes — Customer Confirmed', value:'Yes', cls:'yes' },
+    { label:'No — No Response', value:'No', cls:'no' },
+  ]},
+  updateOrderStatus: { title:'Customer Update', sub:'Did customer confirm?', options:[
+    { label:'Yes — Customer Confirmed', value:'Yes', cls:'yes' },
+    { label:'No — No Response', value:'No', cls:'no' },
+  ]},
+  stockChecking: { title:'Stock Check', sub:'Is stock available?', options:[
+    { label:'Yes — In Stock', value:'Yes', cls:'yes' },
+    { label:'No — Out of Stock', value:'No', cls:'no' },
+    { label:'Partial — Some Available', value:'Partial', cls:'partial' },
+  ]},
+};
 
 // which/key are explicit here (not read from state.activeStage) so this same
 // modal works both from the By Stage table AND from the Pipeline/Grouped
@@ -1175,7 +1190,13 @@ let _modalOrder = null, _modalInvoice = null, _modalWhich = null, _modalKey = nu
 function openModal(orderId, invoiceNo, which, key){
   _modalOrder = orderId; _modalInvoice = invoiceNo;
   _modalWhich = which; _modalKey = key; _modalStatus = null;
-  if(STATUS_PROMPT_STAGES[key]){
+  const cfg = STATUS_PROMPT_CONFIG[key];
+  if(cfg){
+    document.getElementById('status-modal-title').textContent = cfg.title;
+    document.getElementById('status-modal-sub').textContent = cfg.sub;
+    document.getElementById('status-modal-options').innerHTML = cfg.options.map(o =>
+      `<button class="modal-status-btn ${o.cls}" onclick="chooseStatus('${o.value}')">${esc(o.label)}</button>`
+    ).join('');
     document.getElementById('status-modal').classList.add('open');
   } else {
     openDoerModal();
