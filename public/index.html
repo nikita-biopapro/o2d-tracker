@@ -1192,15 +1192,39 @@ const STATUS_PROMPT_CONFIG = {
     { label:'Done — LR Shared', value:'Done', cls:'yes' },
     { label:'Received — LR Received', value:'Received', cls:'no' },
   ]},
+  // These 3 payment-related steps ask Status first (below), then chain into
+  // a second Payment Status question (see PAY_STATUS_CHAIN / choosePayStatus)
+  // before finally asking who did it — matches the old script's exact flow.
+  paymentFollowUp1: { title:'Next Follow up For Payment', sub:'Was payment reminder sent?', options:[
+    { label:'Yes — Reminder Sent', value:'Yes', cls:'yes' },
+    { label:'No — Not Sent', value:'No', cls:'no' },
+  ]},
+  partFullPayment: { title:'Part / Full Payment Recd', sub:'Was payment reminder sent?', options:[
+    { label:'Yes — Reminder Sent', value:'Yes', cls:'yes' },
+    { label:'No — Not Sent', value:'No', cls:'no' },
+  ]},
+  paymentComplete: { title:'Payment Complete', sub:'Was payment reminder sent?', options:[
+    { label:'Yes — Reminder Sent', value:'Yes', cls:'yes' },
+    { label:'No — Not Sent', value:'No', cls:'no' },
+  ]},
 };
+
+// These 3 steps chain a SECOND question (Payment Status) after the first
+// Status answer, before going to the doer list — same idea as STATUS_PROMPT_CONFIG
+// but two questions deep instead of one.
+const PAY_STATUS_CHAIN = { paymentFollowUp1: true, partFullPayment: true, paymentComplete: true };
+const PAY_STATUS_OPTIONS = [
+  { label:'✔ Received', value:'Received', cls:'yes' },
+  { label:'✖ Not Received', value:'Not Received', cls:'no' },
+];
 
 // which/key are explicit here (not read from state.activeStage) so this same
 // modal works both from the By Stage table AND from the Pipeline/Grouped
 // step-timeline modal, where there's no single "active stage" selected.
-let _modalOrder = null, _modalInvoice = null, _modalWhich = null, _modalKey = null, _modalStatus = null;
+let _modalOrder = null, _modalInvoice = null, _modalWhich = null, _modalKey = null, _modalStatus = null, _modalPayStatus = null;
 function openModal(orderId, invoiceNo, which, key){
   _modalOrder = orderId; _modalInvoice = invoiceNo;
-  _modalWhich = which; _modalKey = key; _modalStatus = null;
+  _modalWhich = which; _modalKey = key; _modalStatus = null; _modalPayStatus = null;
   const cfg = STATUS_PROMPT_CONFIG[key];
   if(cfg){
     document.getElementById('status-modal-title').textContent = cfg.title;
@@ -1215,6 +1239,21 @@ function openModal(orderId, invoiceNo, which, key){
 }
 function chooseStatus(status){
   _modalStatus = status;
+  // 3 payment steps chain a second question (Payment Status) before the doer
+  // list — re-render the SAME modal with that question instead of closing it.
+  if(PAY_STATUS_CHAIN[_modalKey]){
+    document.getElementById('status-modal-title').textContent = 'Payment Status';
+    document.getElementById('status-modal-sub').textContent = 'What is the payment status?';
+    document.getElementById('status-modal-options').innerHTML = PAY_STATUS_OPTIONS.map(o =>
+      `<button class="modal-status-btn ${o.cls}" onclick="choosePayStatus('${o.value}')">${esc(o.label)}</button>`
+    ).join('');
+    return;
+  }
+  closeStatusModal();
+  openDoerModal();
+}
+function choosePayStatus(payStatus){
+  _modalPayStatus = payStatus;
   closeStatusModal();
   openDoerModal();
 }
@@ -1240,6 +1279,7 @@ async function confirmDone(doer){
         side: state.side, which, stageKey: key,
         orderId: _modalOrder, invoiceNo: _modalInvoice || undefined,
         actualTime: new Date().toISOString(), doer, status: _modalStatus || undefined,
+        payStatus: _modalPayStatus || undefined,
       }),
     });
     const data = await res.json();
