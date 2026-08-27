@@ -373,7 +373,7 @@ function sheetInfo(which, side) {
 
 // Writes the Actual date for one mapped step into the OTHER side's matching row.
 // direction: 'new-to-old' or 'old-to-new'. Returns {synced:boolean, reason?}.
-async function crossSyncStage(sheets, mapping, orderId, invoiceNo, actual, direction, doer) {
+async function crossSyncStage(sheets, mapping, orderId, invoiceNo, actual, direction, doer, status) {
   const fromSide = direction === 'new-to-old' ? 'new' : 'old';
   const toSide   = direction === 'new-to-old' ? 'old' : 'new';
   const fromKey  = direction === 'new-to-old' ? mapping.newKey : mapping.oldKey;
@@ -391,6 +391,10 @@ async function crossSyncStage(sheets, mapping, orderId, invoiceNo, actual, direc
 
   const updates = { [toCols.actual]: formatDT(actual) };
   if (toCols.doer && doer) updates[toCols.doer] = doer;
+  // Mirror the status choice too (e.g. LR Details' Done/Received, or Coordinate
+  // Delivery/Update Order Status's Yes/No) — same text written to whichever
+  // status column the other side has, same as actual/doer already do.
+  if (toCols.status && status) updates[toCols.status] = status;
   await writeCells(sheets, to.id, to.tab, rowNum, updates);
   return { synced: true };
 }
@@ -428,7 +432,7 @@ app.post('/api/complete-stage', async (req, res) => {
     const mapping = CROSS_SYNC.find(m => m.newSheet === which && (side === 'new' ? m.newKey === stageKey : m.oldKey === stageKey));
     let cross = { synced: false, reason: 'not a cross-synced stage' };
     if (mapping) {
-      cross = await crossSyncStage(sheets, mapping, orderId, invoiceNo, actual, side === 'new' ? 'new-to-old' : 'old-to-new', doer);
+      cross = await crossSyncStage(sheets, mapping, orderId, invoiceNo, actual, side === 'new' ? 'new-to-old' : 'old-to-new', doer, status);
     }
 
     res.json({ success:true, delay, cross });
