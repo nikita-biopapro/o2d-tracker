@@ -401,10 +401,10 @@ async function crossSyncStage(sheets, mapping, orderId, invoiceNo, actual, direc
 
 // ── API: complete a stage, writing to the primary side + cross-syncing ──────
 // body: { side:'new'|'old', which:'fms'|'split', stageKey, orderId, invoiceNo?,
-//         actualTime?, doer?, status?, payStatus? }
+//         rowIdx?, actualTime?, doer?, status?, payStatus? }
 app.post('/api/complete-stage', async (req, res) => {
   try {
-    const { side, which, stageKey, orderId, invoiceNo, actualTime, doer, status, payStatus } = req.body || {};
+    const { side, which, stageKey, orderId, invoiceNo, rowIdx, actualTime, doer, status, payStatus } = req.body || {};
     if (!side || !which || !stageKey || !orderId) return res.json({ success:false, error:'side, which, stageKey, orderId required' });
 
     const sheets = await getSheets();
@@ -414,8 +414,16 @@ app.post('/api/complete-stage', async (req, res) => {
     if (!cols) return res.json({ success:false, error:`Unknown stage "${stageKey}" for ${side}/${which}` });
 
     const rows = await readRaw(sheets, info.id, `${info.tab}!A${DATA_START_ROW}:${colLetter(50)}`);
+    // An invoice can carry more than one product line, so several Split_FMS
+    // rows can share the exact same Order ID + Invoice No — matching by those
+    // two alone can't tell them apart and silently keeps hitting the FIRST
+    // one. The frontend already knows exactly which sheet row it's acting on
+    // (rowIdx, from /api/orders) — prefer that, and only fall back to the old
+    // order+invoice search for older clients that don't send it yet.
     const invoiceCol = which === 'split' ? info.base.INVOICE_NO : null;
-    const rowNum = findRow(rows, info.base.ORDER_ID, invoiceCol, orderId, invoiceNo);
+    const rowNum = Number.isInteger(rowIdx) && rowIdx > 0
+      ? rowIdx
+      : findRow(rows, info.base.ORDER_ID, invoiceCol, orderId, invoiceNo);
     if (rowNum === -1) return res.json({ success:false, error:`Row not found for ${orderId}${invoiceNo?'/'+invoiceNo:''}` });
 
     const plannedRaw = rows[rowNum - DATA_START_ROW][cols.plan - 1];

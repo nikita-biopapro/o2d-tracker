@@ -579,15 +579,19 @@ function buildCombinedStages(fmsOrder, splitOrder){
   const labels = STAGE_LABELS[state.side];
   const out = Object.entries(labels.fms).map(([key,name]) => {
     const s = fmsOrder.stages.find(x=>x.key===key) || {};
-    return { name, which:'fms', key, planned:s.planned||'', actual:s.actual||'', doer:s.doer||'', completed:!!s.completed, meta:metaFor('fms',key), existsInSheet:true };
+    return { name, which:'fms', key, planned:s.planned||'', actual:s.actual||'', doer:s.doer||'', completed:!!s.completed, meta:metaFor('fms',key), existsInSheet:true, rowIdx: fmsOrder.rowIdx };
   });
   // Split (invoice-level) steps are always listed, even before the order has
   // been dispatched — they just show as "not yet reached" placeholders until
   // Dispatch_Ledger sync creates the Split_FMS row (existsInSheet:false until
   // then, which also hides the Mark Done button — nothing to write to yet).
+  // rowIdx comes from splitOrder itself (not the stage) since a single invoice
+  // row's rowIdx pins ALL its stages to that one exact sheet row — needed
+  // because an invoice with more than one product line makes several rows
+  // share the same Order ID + Invoice No.
   Object.entries(labels.split).forEach(([key,name]) => {
     const s = splitOrder ? (splitOrder.stages.find(x=>x.key===key) || {}) : {};
-    out.push({ name, which:'split', key, planned:s.planned||'', actual:s.actual||'', doer:s.doer||'', completed:!!s.completed, meta:metaFor('split',key), existsInSheet:!!splitOrder });
+    out.push({ name, which:'split', key, planned:s.planned||'', actual:s.actual||'', doer:s.doer||'', completed:!!s.completed, meta:metaFor('split',key), existsInSheet:!!splitOrder, rowIdx: splitOrder ? splitOrder.rowIdx : null });
   });
   return out;
 }
@@ -1129,7 +1133,7 @@ function openDetailModal(orderId, invoiceNo){
     const safeOrder = row.orderId.replace(/'/g,"\\'");
     const safeInv = (row.invoiceNo||'').replace(/'/g,"\\'");
     const markDoneBtn = isCurrent && s.which
-      ? `<button class="done-btn timeline-done-btn" onclick="openModalFromTimeline('${safeOrder}','${safeInv}','${s.which}','${s.key}')">Mark Done</button>`
+      ? `<button class="done-btn timeline-done-btn" onclick="openModalFromTimeline('${safeOrder}','${safeInv}','${s.which}','${s.key}',${s.rowIdx})">Mark Done</button>`
       : '';
     return `<div class="timeline-row"><div class="timeline-icon ${cls}">${icon}</div>`+
       `<div class="timeline-name ${cls==='pending'?'pending':''}">${esc(s.name)}</div>`+
@@ -1141,9 +1145,9 @@ function closeDetailModal(){ document.getElementById('detail-modal').classList.r
 
 // Mark Done from inside the step-timeline modal — closes this modal first so
 // the doer-select modal (#modal) isn't stacked underneath a second dark overlay.
-function openModalFromTimeline(orderId, invoiceNo, which, key){
+function openModalFromTimeline(orderId, invoiceNo, which, key, rowIdx){
   closeDetailModal();
-  openModal(orderId, invoiceNo, which, key);
+  openModal(orderId, invoiceNo, which, key, rowIdx);
 }
 
 // The ⓘ button's timeline-detail box is its own row's NEXT sibling (rendered
@@ -1158,7 +1162,10 @@ function doneBtn(o, s){
   const safeOrder = o.orderId.replace(/'/g,"\\'");
   const safeInv = (o.invoiceNo||'').replace(/'/g,"\\'");
   const { which, key } = activeStageInfo();
-  return `<button class="done-btn" onclick="openModal('${safeOrder}','${safeInv}','${which}','${key}')">Mark Done</button>`;
+  // o.rowIdx pins this to the EXACT sheet row — needed because an invoice with
+  // more than one product line creates several rows sharing the same Order ID
+  // + Invoice No, which orderId/invoiceNo alone can't tell apart.
+  return `<button class="done-btn" onclick="openModal('${safeOrder}','${safeInv}','${which}','${key}',${o.rowIdx})">Mark Done</button>`;
 }
 
 const DOER_NAMES = ['Manasi', 'Sayli', 'Sushil', 'Neha'];
@@ -1221,10 +1228,11 @@ const PAY_STATUS_OPTIONS = [
 // which/key are explicit here (not read from state.activeStage) so this same
 // modal works both from the By Stage table AND from the Pipeline/Grouped
 // step-timeline modal, where there's no single "active stage" selected.
-let _modalOrder = null, _modalInvoice = null, _modalWhich = null, _modalKey = null, _modalStatus = null, _modalPayStatus = null;
-function openModal(orderId, invoiceNo, which, key){
+let _modalOrder = null, _modalInvoice = null, _modalWhich = null, _modalKey = null, _modalStatus = null, _modalPayStatus = null, _modalRowIdx = null;
+function openModal(orderId, invoiceNo, which, key, rowIdx){
   _modalOrder = orderId; _modalInvoice = invoiceNo;
   _modalWhich = which; _modalKey = key; _modalStatus = null; _modalPayStatus = null;
+  _modalRowIdx = Number.isInteger(rowIdx) ? rowIdx : null;
   const cfg = STATUS_PROMPT_CONFIG[key];
   if(cfg){
     document.getElementById('status-modal-title').textContent = cfg.title;
@@ -1278,6 +1286,7 @@ async function confirmDone(doer){
       body: JSON.stringify({
         side: state.side, which, stageKey: key,
         orderId: _modalOrder, invoiceNo: _modalInvoice || undefined,
+        rowIdx: _modalRowIdx || undefined,
         actualTime: new Date().toISOString(), doer, status: _modalStatus || undefined,
         payStatus: _modalPayStatus || undefined,
       }),
