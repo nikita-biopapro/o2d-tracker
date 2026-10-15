@@ -416,6 +416,11 @@ async function crossSyncStage(sheets, mapping, orderId, invoiceNo, actual, direc
   return { synced: true };
 }
 
+// Build id for the "new version available" notice in the page. Render exposes
+// the deployed git commit; locally it's just this process's start time.
+const BUILD_ID = process.env.RENDER_GIT_COMMIT || String(Date.now());
+app.get('/api/version', (req, res) => { res.set('Cache-Control', 'no-store'); res.json({ build: BUILD_ID }); });
+
 // ── API: complete a stage, writing to the primary side + cross-syncing ──────
 // body: { side:'new'|'old', which:'fms'|'split', stageKey, orderId, invoiceNo?,
 //         rowIdx?, actualTime?, doer?, status?, payStatus? }

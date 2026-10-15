@@ -1200,6 +1200,11 @@ function doneBtn(o, s){
   // o.rowIdx pins this to the EXACT sheet row — needed because an invoice with
   // more than one product line creates several rows sharing the same Order ID
   // + Invoice No, which orderId/invoiceNo alone can't tell apart.
+  // On the bulk-select steps a row's own Mark Done follows the ticks: if this row
+  // is ticked along with others, it marks all of them, as people expect.
+  if(BULK_STAGES[key]){
+    return `<button class="done-btn" onclick="bulkRowDone('${safeOrder}','${safeInv}',${o.rowIdx})">Mark Done</button>`;
+  }
   return `<button class="done-btn" onclick="openModal('${safeOrder}','${safeInv}','${which}','${key}',${o.rowIdx})">Mark Done</button>`;
 }
 
@@ -1318,6 +1323,29 @@ function openDoerModal(){
 }
 function closeModal(){ document.getElementById('modal').classList.remove('open'); }
 
+// -- New-version notice -------------------------------------------------------
+// A tab left open keeps running the code it loaded with. Compare the server's
+// build id to the one this page started with and ask for a refresh when it moves.
+let _buildId = null;
+async function checkBuild(){
+  try{
+    const r = await fetch('/api/version', { cache:'no-store' });
+    const d = await r.json();
+    if(!d || !d.build) return;
+    if(_buildId === null){ _buildId = d.build; return; }
+    if(d.build !== _buildId && !document.getElementById('new-version-bar')){
+      const b = document.createElement('div');
+      b.id = 'new-version-bar';
+      b.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:9999;background:#1d4ed8;color:#fff;padding:10px 16px;font-size:13px;font-weight:600;display:flex;gap:12px;align-items:center;justify-content:center;';
+      b.innerHTML = 'A new version of this page is available. Refresh to avoid saving with old code. <button onclick="location.reload(true)" style="background:#fff;color:#1d4ed8;border:none;border-radius:6px;padding:5px 12px;font-weight:700;cursor:pointer;">Refresh now</button>';
+      document.body.appendChild(b);
+    }
+  }catch(e){}
+}
+checkBuild();
+setInterval(checkBuild, 60000);
+document.addEventListener('visibilitychange', () => { if(!document.hidden) checkBuild(); });
+
 // -- Bulk select (payment steps) ---------------------------------------------
 // Which steps show the checkbox column. Add a stageKey here to turn it on for
 // another step - the server side works for any stage.
@@ -1377,6 +1405,18 @@ function bulkSelectOverdue(){
   bulkRefresh();
 }
 function bulkClear(){ state.bulkSel = {}; _bulkLast = null; bulkRefresh(); }
+function bulkRowDone(orderId, invoiceNo, rowIdx){
+  const { which, key } = activeStageInfo();
+  const sel = Object.values(state.bulkSel);
+  if(sel.length > 1 && state.bulkSel[rowIdx]){
+    openModal('', '', which, key, null, sel); // this row is one of several ticked rows -> all of them
+    return;
+  }
+  if(sel.length && !state.bulkSel[rowIdx]){
+    toast('Only this row will be marked. Use "Mark done (' + sel.length + ')" at the top for the ticked rows.', 'ok');
+  }
+  openModal(orderId, invoiceNo, which, key, rowIdx);
+}
 function bulkStart(){
   const items = Object.values(state.bulkSel);
   if(!items.length){ toast('Select at least one row first', 'err'); return; }
