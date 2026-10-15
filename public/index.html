@@ -494,7 +494,7 @@ const STAGE_LABELS = {
 // state.activeStage is a composite id "which:key" (e.g. "fms:confirmOrder") so FMS
 // and Split_FMS stages can live in one merged sidebar without key collisions.
 // fmsMeta/splitMeta hold {stageKey: {what,who,how,when}} from the sheet's rows 2-5.
-let state = { side:'new', viewMode:'dashboard', fmsOrders:[], splitOrders:[], fmsMeta:{}, splitMeta:{}, activeStage:null };
+let state = { side:'new', viewMode:'dashboard', fmsOrders:[], splitOrders:[], fmsMeta:{}, splitMeta:{}, activeStage:null, bulkSel:{} };
 
 // Turns any http(s) URL inside plain text into a clickable link, keeping the
 // rest as plain (escaped) text — handles "Label : https://..." cells from the sheet.
@@ -622,6 +622,7 @@ async function syncNow(){
 }
 
 async function loadOrders(){
+  state.bulkSel = {};
   const btn = document.getElementById('refresh-btn');
   btn.disabled = true; setNavBtnText(btn, 'Loading...');
   document.getElementById('table-area').innerHTML = '<div class="loading"><div class="spinner"></div>Loading...</div>';
@@ -698,7 +699,7 @@ function buildSidebar(){
     });
     const div = document.createElement('div');
     div.className = 'stage-item' + (id === state.activeStage ? ' active' : '');
-    div.onclick = () => { state.activeStage = id; buildSidebar(); renderTable(); renderStepInfo(); };
+    div.onclick = () => { state.activeStage = id; state.bulkSel = {}; buildSidebar(); renderTable(); renderStepInfo(); };
     div.innerHTML = `<span class="stage-name">${esc(name)}</span><span class="stage-count${hasOverdue?' has-overdue':''}">${count}</span>`;
     sb.appendChild(div);
   });
@@ -775,14 +776,40 @@ function renderTable(){
   }
 
   const showInvoice = which === 'split';
+  const bulk = !!BULK_STAGES[key];
+  // Drop selected rows that the current filters now hide — a row you can't see
+  // must never get marked done by accident.
+  if(bulk){
+    const visIdx = {}; rows.forEach(o => { visIdx[o.rowIdx] = true; });
+    Object.keys(state.bulkSel).forEach(k => { if(!visIdx[k]) delete state.bulkSel[k]; });
+  }
+  _bulkVisible = bulk ? rows : [];
   // Fixed column widths (as %) so Customer/Planned don't balloon with empty
   // space — table-layout:fixed makes these authoritative regardless of content.
-  const colWidths = showInvoice
+  let colWidths = showInvoice
     ? [4, 14, 13, 22, 18, 10, 19]   // #, Order ID, Invoice No, Customer, Planned, Delay, Action
     : [4, 17, 29, 20, 12, 18];      // #, Order ID, Customer, Planned, Delay, Action
-  const headers = ['#', 'Order ID'].concat(showInvoice ? ['Invoice No'] : []).concat(['Customer', 'Planned', 'Delay', 'Action']);
-  let html = '<table><colgroup>' + colWidths.map(w => `<col style="width:${w}%">`).join('') + '</colgroup>' +
-    '<thead><tr>' + headers.map((h, i) => `<th>${h}<div class="col-resizer" data-col="${i}"></div></th>`).join('') + '</tr></thead><tbody>';
+  let headers = ['#', 'Order ID'].concat(showInvoice ? ['Invoice No'] : []).concat(['Customer', 'Planned', 'Delay', 'Action']);
+  if(bulk){
+    // checkbox column in front; shave the room off Customer
+    colWidths = showInvoice ? [4, 4, 13, 12, 22, 17, 10, 18] : [4, 4, 15, 26, 20, 11, 20];
+    headers = [''].concat(headers);
+  }
+  const selCount = Object.keys(state.bulkSel).length;
+  let html = '';
+  if(bulk){
+    html += `<div id="bulk-bar" style="position:sticky;top:0;z-index:6;display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 14px;background:var(--blue-lt);border-bottom:1px solid var(--line2);">`+
+      `<span id="bulk-count" style="font-size:12.5px;font-weight:700;color:var(--blue-dk);">${selCount ? selCount+' selected' : 'Select rows to mark many done at once'}</span>`+
+      `<button class="done-btn" id="bulk-go" style="${selCount?'':'display:none;'}" onclick="bulkStart()">Mark done (${selCount})</button>`+
+      `<button onclick="bulkSelectOverdue()" style="background:#fff;border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;color:var(--ink2);">Select all overdue</button>`+
+      `<button id="bulk-clear" onclick="bulkClear()" style="${selCount?'':'display:none;'}background:none;border:none;font-size:12px;font-weight:600;cursor:pointer;color:var(--muted);">Clear</button>`+
+      `<span style="font-size:11.5px;color:var(--muted);margin-left:auto;">Up to ${BULK_MAX} at a time · Shift-click selects a range</span>`+
+      `</div>`;
+  }
+  html += '<table><colgroup>' + colWidths.map(w => `<col style="width:${w}%">`).join('') + '</colgroup>' +
+    '<thead><tr>' + headers.map((h, i) => (bulk && i === 0)
+      ? `<th><input type="checkbox" id="bulk-all" onchange="bulkToggleAll(this.checked)" aria-label="Select all rows"><div class="col-resizer" data-col="0"></div></th>`
+      : `<th>${h}<div class="col-resizer" data-col="${i}"></div></th>`).join('') + '</tr></thead><tbody>';
 
   rows.forEach((o, i) => {
     const s = o.stages.find(x => x.key === key);
@@ -790,7 +817,9 @@ function renderTable(){
     const isOverdue = pd && pd < now;
     const badge = isOverdue ? '<span class="badge badge-overdue">Overdue</span>' : '<span class="badge badge-pending">Pending</span>';
     const delayTxt = isOverdue && pd ? `<span class="delay-txt">${overdueStr(pd)}</span>` : '';
+    const checked = !!state.bulkSel[o.rowIdx];
     html += `<tr${isOverdue?' class="overdue"':''}>` +
+      (bulk ? `<td><input type="checkbox" data-bulk="${o.rowIdx}" ${checked?'checked':''} onclick="bulkPick(event,${i})" aria-label="Select ${esc(o.orderId)}"></td>` : '') +
       `<td style="color:#cbd5e1;">${i+1}</td>` +
       `<td class="id-cell cell-trunc" title="${esc(o.orderId)}">${esc(o.orderId)}</td>` +
       (showInvoice ? `<td class="cell-trunc" title="${esc(o.invoiceNo||'')}">${esc(o.invoiceNo||'—')}</td>` : '') +
@@ -1229,14 +1258,19 @@ const PAY_STATUS_OPTIONS = [
 // modal works both from the By Stage table AND from the Pipeline/Grouped
 // step-timeline modal, where there's no single "active stage" selected.
 let _modalOrder = null, _modalInvoice = null, _modalWhich = null, _modalKey = null, _modalStatus = null, _modalPayStatus = null, _modalRowIdx = null;
-function openModal(orderId, invoiceNo, which, key, rowIdx){
+// Set only while the Mark Done flow is running for a multi-row selection —
+// list of {orderId, invoiceNo, rowIdx}. Single-row Mark Done leaves it null.
+let _modalBulk = null;
+function bulkSuffix(){ return _modalBulk ? ' \u00b7 applies to ' + _modalBulk.length + ' selected rows' : ''; }
+function openModal(orderId, invoiceNo, which, key, rowIdx, bulkItems){
   _modalOrder = orderId; _modalInvoice = invoiceNo;
   _modalWhich = which; _modalKey = key; _modalStatus = null; _modalPayStatus = null;
   _modalRowIdx = Number.isInteger(rowIdx) ? rowIdx : null;
+  _modalBulk = bulkItems && bulkItems.length ? bulkItems : null;
   const cfg = STATUS_PROMPT_CONFIG[key];
   if(cfg){
     document.getElementById('status-modal-title').textContent = cfg.title;
-    document.getElementById('status-modal-sub').textContent = cfg.sub;
+    document.getElementById('status-modal-sub').textContent = cfg.sub + bulkSuffix();
     document.getElementById('status-modal-options').innerHTML = cfg.options.map(o =>
       `<button class="modal-status-btn ${o.cls}" onclick="chooseStatus('${o.value}')">${esc(o.label)}</button>`
     ).join('');
@@ -1251,7 +1285,7 @@ function chooseStatus(status){
   // list — re-render the SAME modal with that question instead of closing it.
   if(PAY_STATUS_CHAIN[_modalKey]){
     document.getElementById('status-modal-title').textContent = 'Payment Status';
-    document.getElementById('status-modal-sub').textContent = 'What is the payment status?';
+    document.getElementById('status-modal-sub').textContent = 'What is the payment status?' + bulkSuffix();
     document.getElementById('status-modal-options').innerHTML = PAY_STATUS_OPTIONS.map(o =>
       `<button class="modal-status-btn ${o.cls}" onclick="choosePayStatus('${o.value}')">${esc(o.label)}</button>`
     ).join('');
@@ -1268,7 +1302,9 @@ function choosePayStatus(payStatus){
 function closeStatusModal(){ document.getElementById('status-modal').classList.remove('open'); }
 
 function openDoerModal(){
-  document.getElementById('modal-sub').textContent = _modalOrder + (_modalInvoice ? ' / '+_modalInvoice : '');
+  document.getElementById('modal-sub').textContent = _modalBulk
+    ? _modalBulk.length + ' selected rows'
+    : _modalOrder + (_modalInvoice ? ' / '+_modalInvoice : '');
   document.getElementById('modal-doer-list').innerHTML = DOER_NAMES.map(name =>
     `<button class="modal-doer-btn" onclick="confirmDone('${name}')">${esc(name)}</button>`
   ).join('');
@@ -1276,11 +1312,99 @@ function openDoerModal(){
 }
 function closeModal(){ document.getElementById('modal').classList.remove('open'); }
 
+// -- Bulk select (payment steps) ---------------------------------------------
+// Which steps show the checkbox column. Add a stageKey here to turn it on for
+// another step - the server side works for any stage.
+const BULK_STAGES = { paymentFollowUp1:true, partFullPayment:true, paymentComplete:true };
+const BULK_MAX = 50;
+let _bulkVisible = []; // rows currently listed in the table, in display order
+let _bulkLast = null;  // index of the last ticked row, for Shift-click ranges
+
+function bulkRefresh(){
+  const n = Object.keys(state.bulkSel).length;
+  document.querySelectorAll('#table-area input[data-bulk]').forEach(cb => { cb.checked = !!state.bulkSel[cb.dataset.bulk]; });
+  const c = document.getElementById('bulk-count'), go = document.getElementById('bulk-go'), cl = document.getElementById('bulk-clear');
+  if(c) c.textContent = n ? n + ' selected' : 'Select rows to mark many done at once';
+  if(go){ go.style.display = n ? '' : 'none'; go.textContent = 'Mark done (' + n + ')'; }
+  if(cl) cl.style.display = n ? '' : 'none';
+  const all = document.getElementById('bulk-all');
+  if(all) all.checked = _bulkVisible.length > 0 && _bulkVisible.every(o => state.bulkSel[o.rowIdx]);
+}
+function bulkAdd(o){
+  if(state.bulkSel[o.rowIdx]) return true;
+  if(Object.keys(state.bulkSel).length >= BULK_MAX) return false;
+  state.bulkSel[o.rowIdx] = { orderId:o.orderId, invoiceNo:o.invoiceNo || '', rowIdx:o.rowIdx };
+  return true;
+}
+function bulkPick(e, i){
+  const o = _bulkVisible[i]; if(!o) return;
+  if(e.shiftKey && _bulkLast !== null){
+    const a = Math.min(_bulkLast, i), b = Math.max(_bulkLast, i);
+    let full = false;
+    for(let k = a; k <= b; k++){ if(!bulkAdd(_bulkVisible[k])){ full = true; break; } }
+    if(full) toast('Limit is ' + BULK_MAX + ' rows at a time', 'err');
+  } else if(state.bulkSel[o.rowIdx]){
+    delete state.bulkSel[o.rowIdx];
+  } else if(!bulkAdd(o)){
+    toast('Limit is ' + BULK_MAX + ' rows at a time', 'err');
+  }
+  _bulkLast = i;
+  bulkRefresh();
+}
+function bulkToggleAll(on){
+  if(!on){ _bulkVisible.forEach(o => { delete state.bulkSel[o.rowIdx]; }); }
+  else {
+    let full = false;
+    for(const o of _bulkVisible){ if(!bulkAdd(o)){ full = true; break; } }
+    if(full) toast('Selected the first ' + BULK_MAX + ' - that is the limit per go', 'err');
+  }
+  bulkRefresh();
+}
+function bulkSelectOverdue(){
+  const now = new Date(), key = activeStageInfo().key; let full = false;
+  for(const o of _bulkVisible){
+    const s = o.stages.find(x => x.key === key);
+    const pd = s && parseDate(s.planned);
+    if(pd && pd < now && !bulkAdd(o)){ full = true; break; }
+  }
+  if(full) toast('Selected the first ' + BULK_MAX + ' overdue - that is the limit per go', 'err');
+  bulkRefresh();
+}
+function bulkClear(){ state.bulkSel = {}; _bulkLast = null; bulkRefresh(); }
+function bulkStart(){
+  const items = Object.values(state.bulkSel);
+  if(!items.length){ toast('Select at least one row first', 'err'); return; }
+  const { which, key } = activeStageInfo();
+  openModal('', '', which, key, null, items);
+}
+
 async function confirmDone(doer){
   closeModal();
   toast('Saving...', 'ok');
   try{
     const which = _modalWhich, key = _modalKey;
+    if(_modalBulk){
+      const items = _modalBulk;
+      const bres = await fetch('/api/complete-stages', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          side: state.side, which, stageKey: key, items,
+          actualTime: new Date().toISOString(), doer,
+          status: _modalStatus || undefined, payStatus: _modalPayStatus || undefined,
+        }),
+      });
+      const bdata = await bres.json();
+      _modalBulk = null;
+      if(bdata.success){
+        const sk = (bdata.skipped || []).length;
+        toast(bdata.done + ' marked done' + (sk ? ', ' + sk + ' skipped (' + [...new Set(bdata.skipped.map(x => x.reason))].join('; ') + ')' : ''), sk ? 'err' : 'ok');
+        state.bulkSel = {};
+        loadOrders();
+      } else {
+        toast('Error: ' + (bdata.error || 'failed'), 'err');
+      }
+      return;
+    }
     const res = await fetch('/api/complete-stage', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({

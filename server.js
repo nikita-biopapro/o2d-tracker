@@ -449,6 +449,76 @@ app.post('/api/complete-stage', async (req, res) => {
   }
 });
 
+// ── API: complete the SAME stage on many rows at once ───────────────────────
+// For clearing a big backlog in one go. Every item must carry the exact sheet
+// row (rowIdx) — bulk never searches by order+invoice, since several rows can
+// share those. One sheet read + one batched write for the whole selection.
+// A row is skipped (never overwritten) when it's already done, or when the
+// order/invoice sitting at that row no longer matches what the user selected
+// (the sheet changed since the page loaded).
+// body: { side, which, stageKey, items:[{orderId, invoiceNo?, rowIdx}],
+//         actualTime?, doer?, status?, payStatus?, dryRun? }
+const BULK_MAX = 50;
+app.post('/api/complete-stages', async (req, res) => {
+  try {
+    const { side, which, stageKey, items, actualTime, doer, status, payStatus, dryRun } = req.body || {};
+    if (!side || !which || !stageKey) return res.json({ success:false, error:'side, which, stageKey required' });
+    if (!Array.isArray(items) || !items.length) return res.json({ success:false, error:'items required' });
+    if (items.length > BULK_MAX) return res.json({ success:false, error:`Select at most ${BULK_MAX} rows at a time` });
+
+    const info = sheetInfo(which, side);
+    const cols = info.stages[stageKey];
+    if (!cols) return res.json({ success:false, error:`Unknown stage "${stageKey}" for ${side}/${which}` });
+
+    const sheets = await getSheets();
+    const actual = actualTime ? new Date(actualTime) : new Date();
+    const rows = await readRaw(sheets, info.id, `${info.tab}!A${DATA_START_ROW}:${colLetter(50)}`);
+
+    const updatesByRow = {};
+    const done = [], skipped = [];
+    const seenRows = new Set();
+    for (const it of items) {
+      const rowNum = it && Number.isInteger(it.rowIdx) ? it.rowIdx : -1;
+      const tag = { rowIdx: it && it.rowIdx, orderId: it && it.orderId };
+      if (rowNum < DATA_START_ROW) { skipped.push({ ...tag, reason:'invalid row' }); continue; }
+      if (seenRows.has(rowNum))    { skipped.push({ ...tag, reason:'duplicate in selection' }); continue; }
+      seenRows.add(rowNum);
+      const r = rows[rowNum - DATA_START_ROW];
+      if (!r) { skipped.push({ ...tag, reason:'row not found' }); continue; }
+      const sameOrder = String(r[info.base.ORDER_ID-1]||'').trim() === String(it.orderId||'').trim();
+      const sameInv = which !== 'split' || String(r[info.base.INVOICE_NO-1]||'').trim() === String(it.invoiceNo||'').trim();
+      if (!sameOrder || !sameInv) { skipped.push({ ...tag, reason:'sheet changed — refresh and retry' }); continue; }
+      if (r[cols.actual-1]) { skipped.push({ ...tag, reason:'already done' }); continue; }
+
+      const u = { [cols.actual]: formatDT(actual) };
+      if (cols.status && status)       u[cols.status] = status;
+      if (cols.doer && doer)           u[cols.doer] = doer;
+      if (cols.payStatus && payStatus) u[cols.payStatus] = payStatus;
+      updatesByRow[rowNum] = u;
+      done.push({ ...tag, invoiceNo: it.invoiceNo });
+    }
+
+    if (dryRun) return res.json({ success:true, dryRun:true, would: updatesByRow, done: done.length, skipped });
+
+    if (done.length) await writeCellsBatch(sheets, info.id, info.tab, updatesByRow);
+
+    // Cross-sync (only 4 mapped steps — none of the payment steps are) — rare,
+    // so one at a time is fine.
+    const mapping = CROSS_SYNC.find(m => m.newSheet === which && (side === 'new' ? m.newKey === stageKey : m.oldKey === stageKey));
+    let crossSynced = 0;
+    if (mapping) {
+      for (const d of done) {
+        const c = await crossSyncStage(sheets, mapping, d.orderId, d.invoiceNo, actual, side === 'new' ? 'new-to-old' : 'old-to-new', doer, status);
+        if (c.synced) crossSynced++;
+      }
+    }
+
+    res.json({ success:true, done: done.length, skipped, crossSynced });
+  } catch (e) {
+    res.json({ success:false, error: e.message });
+  }
+});
+
 // ================================================================
 // STAGE META (What / Who / How / When) — read from rows 2-5 of each sheet,
 // which hold that documentation per stage group (row 1 has the O2D-n label,
