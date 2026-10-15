@@ -191,6 +191,23 @@ function findRow(rows, orderCol, invoiceCol, orderId, invoiceNo) {
   return -1;
 }
 
+// Like findRow, but when several rows share the same order (+invoice) it returns
+// the first one whose step is still EMPTY. For clients that don't send the exact
+// row (an old page left open in a tab): plain findRow always lands on the first
+// product line, so a second Mark Done would overwrite the first instead of
+// completing the next line.
+function findOpenRow(rows, orderCol, invoiceCol, orderId, invoiceNo, actualCol) {
+  let firstMatch = -1;
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i] || [];
+    if (String(r[orderCol-1]||'').trim() !== String(orderId||'').trim()) continue;
+    if (invoiceCol && String(r[invoiceCol-1]||'').trim() !== String(invoiceNo||'').trim()) continue;
+    if (firstMatch === -1) firstMatch = DATA_START_ROW + i;
+    if (!r[actualCol-1]) return DATA_START_ROW + i;
+  }
+  return firstMatch;
+}
+
 async function writeCells(sheets, spreadsheetId, tab, rowNum, colValueMap) {
   const data = Object.entries(colValueMap).map(([col, value]) => ({
     range: `${tab}!${colLetter(+col)}${rowNum}`, values: [[value]],
@@ -423,8 +440,23 @@ app.post('/api/complete-stage', async (req, res) => {
     const invoiceCol = which === 'split' ? info.base.INVOICE_NO : null;
     const rowNum = Number.isInteger(rowIdx) && rowIdx > 0
       ? rowIdx
-      : findRow(rows, info.base.ORDER_ID, invoiceCol, orderId, invoiceNo);
+      : findOpenRow(rows, info.base.ORDER_ID, invoiceCol, orderId, invoiceNo, cols.actual);
     if (rowNum === -1) return res.json({ success:false, error:`Row not found for ${orderId}${invoiceNo?'/'+invoiceNo:''}` });
+
+    // Never write over a step that's already done, and never write to a row
+    // that isn't the order/invoice the user clicked (stale page, or the sheet
+    // changed underneath it). Both used to be silent: a second click on the
+    // same line just overwrote the first one's date and doer.
+    const target = rows[rowNum - DATA_START_ROW];
+    if (!target) return res.json({ success:false, error:`Row ${rowNum} no longer exists — refresh and try again` });
+    const rowOrder = String(target[info.base.ORDER_ID-1]||'').trim();
+    const rowInv = which === 'split' ? String(target[info.base.INVOICE_NO-1]||'').trim() : '';
+    if (rowOrder !== String(orderId).trim() || (which === 'split' && invoiceNo && rowInv !== String(invoiceNo).trim())) {
+      return res.json({ success:false, error:`The sheet changed — row ${rowNum} is now ${rowOrder}${rowInv?'/'+rowInv:''}. Refresh and try again` });
+    }
+    if (target[cols.actual - 1]) {
+      return res.json({ success:false, error:`${orderId}${invoiceNo?' / '+invoiceNo:''} is already marked done for this step. Refresh to see the latest` });
+    }
 
     const plannedRaw = rows[rowNum - DATA_START_ROW][cols.plan - 1];
     const planned = parseDMY(plannedRaw);

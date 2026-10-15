@@ -901,10 +901,11 @@ function buildPipelineRows(){
     if(matches && matches.length){
       matches.forEach(so => rows.push({
         orderId: fo.orderId, custName: fo.custName, invoiceNo: so.invoiceNo,
+        splitRowIdx: so.rowIdx, // exact sheet row — an invoice with several product lines shares order+invoice
         stages: buildCombinedStages(fo, so),
       }));
     } else {
-      rows.push({ orderId: fo.orderId, custName: fo.custName, invoiceNo: '', stages: buildCombinedStages(fo, null) });
+      rows.push({ orderId: fo.orderId, custName: fo.custName, invoiceNo: '', splitRowIdx: 0, stages: buildCombinedStages(fo, null) });
     }
   });
   return rows;
@@ -1014,7 +1015,7 @@ function renderDashAllOrders(){
   rows.forEach(r => {
     const st = r._status;
     const tagLabel = STATUS_LABELS[r._statusTag];
-    html += `<tr class="pipeline-row" onclick="openDetailModal('${r.orderId.replace(/'/g,"\\'")}','${(r.invoiceNo||'').replace(/'/g,"\\'")}')">`+
+    html += `<tr class="pipeline-row" onclick="openDetailModal('${r.orderId.replace(/'/g,"\\'")}','${(r.invoiceNo||'').replace(/'/g,"\\'")}',${r.splitRowIdx||0})">`+
       `<td class="id-cell cell-trunc" title="${esc(r.orderId)}">${esc(r.orderId)}</td>`+
       `<td class="cell-trunc" title="${esc(r.custName)}">${esc(r.custName)}</td>`+
       `<td class="cell-trunc" title="${esc(r.invoiceNo||'')}">${esc(r.invoiceNo||'—')}</td>`+
@@ -1051,7 +1052,7 @@ function renderPipeline(){
     '<thead><tr>' + pHeaders.map((h,i) => `<th>${h}<div class="col-resizer" data-col="${i}"></div></th>`).join('') + '</tr></thead><tbody>';
   rows.forEach(r => {
     const st = r._status;
-    html += `<tr class="pipeline-row" onclick="openDetailModal('${r.orderId.replace(/'/g,"\\'")}','${(r.invoiceNo||'').replace(/'/g,"\\'")}')">`+
+    html += `<tr class="pipeline-row" onclick="openDetailModal('${r.orderId.replace(/'/g,"\\'")}','${(r.invoiceNo||'').replace(/'/g,"\\'")}',${r.splitRowIdx||0})">`+
       `<td class="id-cell cell-trunc" title="${esc(r.orderId)}">${esc(r.orderId)}</td>`+
       `<td class="cell-trunc" title="${esc(r.custName)}">${esc(r.custName)}</td>`+
       `<td class="cell-trunc" title="${esc(r.invoiceNo||'')}">${esc(r.invoiceNo||'—')}</td>`+
@@ -1099,7 +1100,7 @@ function renderGrouped(){
       stepNames.map(n=>`<th style="text-align:center;">${esc(n)}</th>`).join('')+
       `</tr></thead><tbody>`;
     orders.forEach(o => {
-      html += `<tr class="pipeline-row" onclick="openDetailModal('${o.orderId.replace(/'/g,"\\'")}','${(o.invoiceNo||'').replace(/'/g,"\\'")}')"><td class="id-cell">${esc(o.orderId)}</td>`;
+      html += `<tr class="pipeline-row" onclick="openDetailModal('${o.orderId.replace(/'/g,"\\'")}','${(o.invoiceNo||'').replace(/'/g,"\\'")}',${o.splitRowIdx||0})"><td class="id-cell">${esc(o.orderId)}</td>`;
       o.stages.forEach((s,i) => {
         const st = s.completed ? 'done' : (i===o.stages.findIndex(x=>!x.completed) ? 'current' : 'pending');
         const icon = st==='done' ? '&#10003;' : (st==='current' ? '&#9203;' : '');
@@ -1112,9 +1113,14 @@ function renderGrouped(){
   area.innerHTML = html;
 }
 
-function openDetailModal(orderId, invoiceNo){
+function openDetailModal(orderId, invoiceNo, splitRowIdx){
   const rows = buildPipelineRows();
-  const row = rows.find(r => r.orderId===orderId && (invoiceNo ? r.invoiceNo===invoiceNo : true)) || rows.find(r => r.orderId===orderId);
+  // Match the exact sheet row first: two product lines on one invoice share the
+  // same Order ID + Invoice No, and matching on those alone always lands on the
+  // first of them — so Mark Done from here would write to the wrong line.
+  const row = (splitRowIdx ? rows.find(r => r.splitRowIdx === splitRowIdx) : null)
+    || rows.find(r => r.orderId===orderId && (invoiceNo ? r.invoiceNo===invoiceNo : true))
+    || rows.find(r => r.orderId===orderId);
   if(!row) return;
   document.getElementById('detail-id').textContent = row.orderId;
   document.getElementById('detail-cust').textContent = row.custName;
