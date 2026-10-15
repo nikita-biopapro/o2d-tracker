@@ -831,6 +831,7 @@ function renderTable(){
   });
   html += '</tbody></table>';
   area.innerHTML = html;
+  if(bulk) bulkRefresh();
   initColumnResize(area.querySelector('table'));
 }
 
@@ -1363,6 +1364,11 @@ function bulkRefresh(){
   if(cl) cl.style.display = n ? '' : 'none';
   const all = document.getElementById('bulk-all');
   if(all) all.checked = _bulkVisible.length > 0 && _bulkVisible.every(o => state.bulkSel[o.rowIdx]);
+  // A ticked row's own button marks every ticked row, so say so on the button.
+  document.querySelectorAll('#table-area tbody tr').forEach(tr => {
+    const cb = tr.querySelector('input[data-bulk]'), b = tr.querySelector('.done-btn');
+    if(cb && b) b.textContent = (cb.checked && n > 1) ? 'Mark Done (' + n + ')' : 'Mark Done';
+  });
 }
 function bulkAdd(o){
   if(state.bulkSel[o.rowIdx]) return true;
